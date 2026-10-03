@@ -1,0 +1,1179 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#22b07d">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="饮食日记">
+<title>饮食日记 · 每日记录</title>
+<style>
+:root{
+  --bg:#f4f6f8; --card:#ffffff; --line:#e8ecf1;
+  --text:#1c2330; --muted:#8a94a6;
+  --accent:#22b07d; --accent-soft:#e3f6ee;
+  --red:#e5484d; --blue:#4f8ef7; --orange:#f7a94f; --purple:#9b6ef3; --water:#3aa7f0;
+  --radius:16px;
+}
+*{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+html,body{margin:0;padding:0;}
+body{
+  background:var(--bg); color:var(--text);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+  font-size:15px; line-height:1.5;
+}
+#app{max-width:540px; margin:0 auto; padding:0 14px calc(76px + env(safe-area-inset-bottom));}
+.view{display:none; padding-top:16px;}
+.view.active{display:block;}
+
+/* ---------- 图标 ---------- */
+.ico{width:1.05em; height:1.05em; fill:none; stroke:currentColor; stroke-width:2;
+  stroke-linecap:round; stroke-linejoin:round; flex:none; vertical-align:-0.15em;}
+.ico-tab{width:22px; height:22px;}
+.ico-h{width:16px; height:16px;}
+.ico-s{width:13px; height:13px;}
+
+/* ---------- 通用卡片 ---------- */
+.card{
+  background:var(--card); border-radius:var(--radius);
+  padding:16px; margin-bottom:14px;
+  box-shadow:0 1px 3px rgba(20,30,50,.06);
+}
+.card h2{font-size:15px; margin:0 0 12px; font-weight:600; display:flex; align-items:center; gap:7px;}
+.card h2 .sub{font-size:12px; color:var(--muted); font-weight:400; margin-left:2px;}
+.muted{color:var(--muted);}
+button{font-family:inherit;}
+
+/* ---------- 日期导航 ---------- */
+.datebar{display:flex; align-items:center; justify-content:space-between; margin-bottom:14px;}
+.datebar .nav{display:flex; align-items:center; gap:6px;}
+.datebtn{
+  display:flex; align-items:center; gap:7px; border:none; background:none; cursor:pointer;
+  font-size:17px; font-weight:700; color:var(--text); padding:5px 8px; margin-left:-8px;
+  border-radius:10px; font-family:inherit;
+}
+.datebtn:active{background:#e9edf2;}
+.datebtn .ico{width:17px; height:17px; color:var(--muted);}
+.datebtn small{font-size:12px; color:var(--muted); font-weight:400;}
+.iconbtn{
+  width:32px; height:32px; border-radius:50%; border:1px solid var(--line);
+  background:var(--card); color:var(--text); cursor:pointer;
+  display:inline-flex; align-items:center; justify-content:center;
+}
+.iconbtn .ico{width:16px; height:16px;}
+.iconbtn:disabled{opacity:.35; cursor:default;}
+.pill{
+  border:1px solid var(--accent); color:var(--accent); background:var(--accent-soft);
+  border-radius:999px; padding:3px 12px; font-size:12px; cursor:pointer;
+}
+
+/* ---------- 热量环 + 营养素 ---------- */
+.macro-row{display:flex; align-items:center; gap:12px;}
+.ring-wrap{position:relative; width:112px; height:112px; flex:none;}
+.ring-wrap svg{display:block;}
+.ring-center{position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center;}
+.ring-center .big{font-size:20px; font-weight:700; line-height:1.1;}
+.ring-center .small{font-size:11px; color:var(--muted); margin-top:2px;}
+.macros{flex:1; display:flex; flex-direction:column; gap:10px; min-width:0;}
+.macro{font-size:12px;}
+.macro .top{display:flex; justify-content:space-between; margin-bottom:4px;}
+.macro .top b{font-weight:600;}
+.macro .bar{height:8px; border-radius:99px; background:#eef1f5; overflow:hidden;}
+.macro .bar i{display:block; height:100%; border-radius:99px; transition:width .3s;}
+.macro .over{color:var(--red);}
+.macro-note{font-size:12px; color:var(--muted); margin-top:10px;}
+
+/* ---------- 饮水 / 体重 ---------- */
+.water-line{display:flex; align-items:center; gap:12px;}
+.water-amount{font-size:26px; font-weight:700;}
+.water-amount small{font-size:13px; color:var(--muted); font-weight:400;}
+.chips{display:flex; flex-wrap:wrap; gap:8px; margin-top:12px;}
+.chip{
+  border:1px solid var(--line); background:#fafbfc; border-radius:999px;
+  padding:6px 14px; font-size:13px; cursor:pointer; color:var(--text);
+}
+.chip:active{background:var(--accent-soft);}
+.chip:disabled{opacity:.4; cursor:default; background:#fafbfc;}
+.chip.minus{color:var(--muted);}
+.inline-add{display:flex; gap:8px; margin-top:10px;}
+.inline-add input{
+  flex:1; min-width:0; border:1px solid var(--line); border-radius:10px;
+  padding:8px 10px; font-size:14px; background:#fafbfc;
+}
+.inline-add button{
+  border:none; background:var(--accent); color:#fff; border-radius:10px;
+  padding:8px 16px; font-size:14px; cursor:pointer;
+}
+.weight-line{display:flex; align-items:baseline; gap:8px; margin-bottom:12px;}
+.weight-line .val{font-size:26px; font-weight:700;}
+.weight-line .unit{font-size:13px; color:var(--muted);}
+.delta{font-size:13px;}
+.delta.up{color:var(--orange);} .delta.down{color:var(--accent);} .delta.same{color:var(--muted);}
+input[type=number]{-moz-appearance:textfield;}
+input::-webkit-outer-spin-button,input::-webkit-inner-spin-button{-webkit-appearance:none;}
+
+/* ---------- 食物列表 ---------- */
+.meal-wrap{position:relative; margin:14px 0 6px; border-radius:10px; overflow:hidden;}
+.meal-del-bg{
+  position:absolute; inset:0; background:var(--red); color:#fff;
+  display:flex; align-items:center; padding-left:18px;
+  font-size:13px; font-weight:600; opacity:0; pointer-events:none;
+}
+.meal-title{
+  font-size:13px; font-weight:600; color:var(--muted); margin:0;
+  display:flex; align-items:center; justify-content:space-between;
+  position:relative; background:var(--card); border-radius:10px;
+  touch-action:pan-y; will-change:transform;
+}
+.meal-title .t{display:flex; align-items:center; gap:6px;}
+.meal-add{
+  border:none; background:none; color:var(--accent); cursor:pointer;
+  width:26px; height:26px; border-radius:8px; margin-right:-5px;
+  display:inline-flex; align-items:center; justify-content:center;
+}
+.meal-add:active{background:var(--accent-soft);}
+.meal-tag{
+  border:1px solid #cdeee0; background:var(--accent-soft); color:var(--accent);
+  border-radius:10px; padding:9px 10px; font-size:15px; font-weight:600; text-align:center;
+}
+.food{
+  display:flex; align-items:center; gap:10px; padding:9px 0;
+  border-bottom:1px solid #f0f2f5;
+}
+.food:last-child{border-bottom:none;}
+.food .info{flex:1; min-width:0;}
+.food .name{font-weight:600; font-size:14px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+.food .sub{font-size:12px; color:var(--muted);}
+.food .kcal{font-weight:700; font-size:14px; color:var(--accent); white-space:nowrap;}
+.food .ops{display:flex; gap:2px;}
+.food .ops button{
+  border:none; background:none; cursor:pointer; color:var(--muted);
+  width:28px; height:28px; border-radius:8px;
+  display:inline-flex; align-items:center; justify-content:center;
+}
+.food .ops button:hover{background:#f0f2f5; color:var(--text);}
+.addbtn{
+  width:100%; margin-top:12px; padding:12px; border-radius:12px;
+  border:1.5px dashed #c9d2dc; background:#fafbfc; color:var(--accent);
+  font-size:14px; font-weight:600; cursor:pointer;
+  display:flex; align-items:center; justify-content:center; gap:6px;
+}
+.addbtn:active{background:var(--accent-soft);}
+
+/* ---------- 统计 ---------- */
+.seg{display:flex; background:#eef1f5; border-radius:12px; padding:3px;}
+.seg button{
+  flex:1; border:none; background:none; padding:7px 0; font-size:13px;
+  border-radius:10px; cursor:pointer; color:var(--muted);
+}
+.seg button.on{background:#fff; color:var(--text); font-weight:600; box-shadow:0 1px 3px rgba(0,0,0,.08);}
+.rangerow{display:flex; align-items:center; gap:8px; margin-top:10px;}
+.rangebtn{
+  flex:1; border:1px solid var(--line); background:#fafbfc; border-radius:10px;
+  padding:8px 6px; font-size:13px; cursor:pointer; color:var(--text);
+  display:flex; align-items:center; justify-content:center; gap:6px;
+}
+.rangebtn .ico{width:14px; height:14px; color:var(--muted);}
+.stat-grid{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
+.stat{background:#fafbfc; border:1px solid var(--line); border-radius:12px; padding:10px 12px;}
+.stat .k{font-size:12px; color:var(--muted);}
+.stat .v{font-size:18px; font-weight:700; margin-top:2px;}
+.stat .v small{font-size:12px; font-weight:400; color:var(--muted);}
+.chart-card > svg{width:100%; height:auto; display:block;}
+.chart-empty{color:var(--muted); font-size:13px; text-align:center; padding:30px 0;}
+
+/* ---------- 设置 ---------- */
+.form-row{display:flex; align-items:center; justify-content:space-between; padding:9px 0; border-bottom:1px solid #f0f2f5;}
+.form-row:last-child{border-bottom:none;}
+.form-row label{font-size:14px;}
+.form-row input{
+  width:110px; border:1px solid var(--line); border-radius:10px;
+  padding:8px 10px; font-size:14px; text-align:right; background:#fafbfc;
+}
+.btn{
+  display:flex; align-items:center; justify-content:center; gap:8px;
+  width:100%; padding:11px; border-radius:12px; border:1px solid var(--line);
+  background:var(--card); font-size:14px; cursor:pointer; margin-bottom:10px; color:var(--text);
+}
+.btn.primary{background:var(--accent); border-color:var(--accent); color:#fff; font-weight:600;}
+.btn.danger{color:var(--red); border-color:#f4c7c8; background:#fdf3f3;}
+.note{font-size:12px; color:var(--muted); line-height:1.7;}
+
+/* ---------- 底部导航 ---------- */
+#tabbar{
+  position:fixed; bottom:0; left:0; right:0; z-index:50;
+  background:rgba(255,255,255,.94); backdrop-filter:blur(10px);
+  border-top:1px solid var(--line);
+  display:flex; justify-content:center;
+  padding-bottom:env(safe-area-inset-bottom);
+}
+#tabbar .inner{display:flex; width:100%; max-width:540px;}
+#tabbar button{
+  flex:1; border:none; background:none; padding:9px 0 8px;
+  display:flex; flex-direction:column; align-items:center; gap:2px;
+  font-size:11px; color:var(--muted); cursor:pointer;
+}
+#tabbar button.on{color:var(--accent); font-weight:600;}
+
+/* ---------- 弹窗 ---------- */
+#backdrop{
+  position:fixed; inset:0; z-index:100; background:rgba(15,20,30,.45);
+  display:flex; align-items:flex-end; justify-content:center;
+}
+@media (min-width:600px){ #backdrop{align-items:center;} }
+#backdrop[hidden]{display:none;}
+#modal{
+  background:var(--card); width:100%; max-width:540px;
+  border-radius:20px 20px 0 0; padding:18px 18px calc(18px + env(safe-area-inset-bottom));
+  max-height:88vh; overflow-y:auto;
+}
+@media (min-width:600px){ #modal{border-radius:20px;} }
+#modal h3{margin:0 0 14px; font-size:16px;}
+.fav-title{font-size:12px; color:var(--muted); margin:0 0 8px;}
+.fav-chips{display:flex; flex-wrap:wrap; gap:8px; margin-bottom:14px;}
+.fav-chips .chip{position:relative; padding-right:30px;}
+.fav-chips .chip .x{
+  position:absolute; right:6px; top:50%; transform:translateY(-50%);
+  border:none; background:none; color:var(--muted); cursor:pointer; padding:2px;
+  display:inline-flex; align-items:center;
+}
+.fgrid{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
+.field{display:flex; flex-direction:column; gap:4px;}
+.field.span2{grid-column:1 / -1;}
+.field label{font-size:12px; color:var(--muted);}
+.field input,.field select{
+  border:1px solid var(--line); border-radius:10px; padding:9px 10px;
+  font-size:15px; background:#fafbfc; width:100%;
+}
+.mactions{display:flex; gap:10px; margin-top:16px;}
+.mactions button{
+  flex:1; padding:12px; border-radius:12px; font-size:15px; cursor:pointer; border:none;
+}
+.mactions .cancel{background:#f0f2f5; color:var(--text);}
+.mactions .ok{background:var(--accent); color:#fff; font-weight:600;}
+.checkline{display:flex; align-items:center; gap:8px; margin-top:12px; font-size:13px; color:var(--muted);}
+.calc-link{
+  border:none; background:none; color:var(--accent); font-size:12px;
+  cursor:pointer; padding:0; text-align:left;
+}
+
+/* ---------- 日历 ---------- */
+.cal-head{display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;}
+.cal-title{font-size:16px; font-weight:700;}
+.cal-grid{display:grid; grid-template-columns:repeat(7,1fr); gap:4px; text-align:center;}
+.cal-dow{font-size:12px; color:var(--muted); padding:4px 0;}
+.cal-day{
+  border:none; background:none; padding:10px 0; border-radius:10px;
+  font-size:14px; cursor:pointer; color:var(--text); font-family:inherit;
+}
+.cal-day:active{background:#eef1f5;}
+.cal-day.today{color:var(--accent); font-weight:700;}
+.cal-day.sel{background:var(--accent); color:#fff; font-weight:600;}
+.cal-day:disabled{color:#c6cdd6; cursor:default;}
+.cal-tip{font-size:12px; color:var(--muted); text-align:center; margin-top:10px;}
+
+/* ---------- Toast ---------- */
+#toast{
+  position:fixed; left:50%; bottom:110px; transform:translateX(-50%);
+  background:rgba(28,35,48,.92); color:#fff; padding:9px 18px;
+  border-radius:999px; font-size:13px; z-index:200; pointer-events:none;
+  opacity:0; transition:opacity .25s; white-space:nowrap;
+}
+#toast.show{opacity:1;}
+</style>
+</head>
+<body>
+
+<svg xmlns="http://www.w3.org/2000/svg" style="display:none">
+  <symbol id="i-note" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></symbol>
+  <symbol id="i-chart" viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></symbol>
+  <symbol id="i-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></symbol>
+  <symbol id="i-calendar" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></symbol>
+  <symbol id="i-drop" viewBox="0 0 24 24"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/></symbol>
+  <symbol id="i-scale" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M8 9.5a5 5 0 0 1 8 0"/><line x1="12" y1="9.5" x2="14.2" y2="7.3"/></symbol>
+  <symbol id="i-bowl" viewBox="0 0 24 24"><path d="M7 2v20"/><path d="M4 2v5a3 3 0 0 0 6 0V2"/><path d="M17 2v20"/><path d="M17 2c-2.5 2.5-3 7 0 9"/></symbol>
+  <symbol id="i-pen" viewBox="0 0 24 24"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></symbol>
+  <symbol id="i-close" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></symbol>
+  <symbol id="i-flame" viewBox="0 0 24 24"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></symbol>
+  <symbol id="i-up" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></symbol>
+  <symbol id="i-down" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></symbol>
+  <symbol id="i-doc" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></symbol>
+  <symbol id="i-chev-l" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></symbol>
+  <symbol id="i-chev-r" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></symbol>
+</svg>
+
+<div id="app">
+  <section id="view-today" class="view active"></section>
+  <section id="view-stats" class="view"></section>
+  <section id="view-settings" class="view"></section>
+</div>
+
+<nav id="tabbar"><div class="inner">
+  <button data-action="tab" data-tab="today" class="on"><svg class="ico ico-tab"><use href="#i-note"/></svg>记录</button>
+  <button data-action="tab" data-tab="stats"><svg class="ico ico-tab"><use href="#i-chart"/></svg>统计</button>
+  <button data-action="tab" data-tab="settings"><svg class="ico ico-tab"><use href="#i-gear"/></svg>设置</button>
+</div></nav>
+
+<div id="backdrop" hidden>
+  <div id="modal" role="dialog" aria-modal="true"></div>
+</div>
+<div id="toast"></div>
+
+<script>
+'use strict';
+/* ================= 工具 ================= */
+const $ = s => document.querySelector(s);
+const pad = n => String(n).padStart(2,'0');
+const fmtDate = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+const todayStr = () => fmtDate(new Date());
+const addDays = (ds, n) => { const d = new Date(ds+'T00:00:00'); d.setDate(d.getDate()+n); return fmtDate(d); };
+const WEEK = ['周日','周一','周二','周三','周四','周五','周六'];
+const fmtCN = ds => { const d = new Date(ds+'T00:00:00'); return `${d.getMonth()+1}月${d.getDate()}日`; };
+const esc = s => String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+const r1 = n => Math.round(n*10)/10;
+const icon = (id, cls='') => `<svg class="ico ${cls}" aria-hidden="true"><use href="#${id}"/></svg>`;
+
+const CN_DIGIT = ['零','一','二','三','四','五','六','七','八','九'];
+function numToCN(n){
+  if (n <= 9) return CN_DIGIT[n];
+  if (n === 10) return '十';
+  if (n < 20) return '十' + CN_DIGIT[n%10];
+  const tens = Math.floor(n/10), ones = n%10;
+  return CN_DIGIT[tens] + '十' + (ones ? CN_DIGIT[ones] : '');
+}
+function cnToNum(s){
+  if (s === '十') return 10;
+  const i = s.indexOf('十');
+  if (i < 0) return CN_DIGIT.indexOf(s) > 0 ? CN_DIGIT.indexOf(s) : NaN;
+  const tens = i === 0 ? 1 : CN_DIGIT.indexOf(s[0]);
+  const ones = i === s.length-1 ? 0 : CN_DIGIT.indexOf(s[i+1]);
+  if (tens <= 0) return NaN;
+  return tens*10 + Math.max(ones, 0);
+}
+const mealLabel = n => `第${numToCN(n)}餐`;
+
+let toastTimer = null;
+function toast(msg){
+  const t = $('#toast'); t.textContent = msg; t.classList.add('show');
+  clearTimeout(toastTimer); toastTimer = setTimeout(()=>t.classList.remove('show'), 1800);
+}
+
+/* ================= 数据 ================= */
+const KEY = 'dietTracker.v1';
+const DEFAULT_TARGETS = {cal:2000, protein:100, carbs:250, fat:65, water:2000};
+const OLD_MEAL = {'早餐':1, '午餐':2, '晚餐':3, '加餐':4};
+
+function mealNum(m){
+  if (typeof m === 'number') return (m >= 1 && m <= 99) ? Math.floor(m) : 1;
+  if (typeof m === 'string') {
+    if (OLD_MEAL[m] != null) return OLD_MEAL[m];
+    const t = m.replace(/^第/, '').replace(/餐$/, '');
+    const n = parseInt(t, 10);
+    if (!isNaN(n) && n >= 1) return Math.min(99, n);
+    const c = cnToNum(t);
+    if (!isNaN(c) && c >= 1) return Math.min(99, c);
+  }
+  return 1;
+}
+
+function normalize(s){
+  const st = s && typeof s === 'object' ? s : {};
+  const out = {days:{}, favorites:[], settings:{targets:{...DEFAULT_TARGETS}}};
+  if (st.settings && st.settings.targets) Object.assign(out.settings.targets, st.settings.targets);
+  if (Array.isArray(st.favorites)) {
+    out.favorites = st.favorites.filter(f => f && typeof f.name === 'string').map(f => ({
+      id: f.id || uid(), name: f.name, meal: mealNum(f.meal),
+      p:+f.p||0, c:+f.c||0, f:+f.f||0, kcal:+f.kcal||0
+    }));
+  }
+  if (st.days && typeof st.days === 'object') {
+    for (const [ds, d] of Object.entries(st.days)) {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(ds) || !d || typeof d !== 'object') continue;
+      out.days[ds] = {
+        water: Math.max(0, +d.water||0),
+        waterLog: Array.isArray(d.waterLog)
+          ? d.waterLog.map(v => Math.min(5000, Math.max(-5000, Math.round(+v)||0))).filter(Boolean).slice(-20)
+          : [],
+        weight: (d.weight == null || isNaN(+d.weight)) ? null : +d.weight,
+        mealCount: Math.min(99, Math.max(0, Math.floor(+d.mealCount||0))),
+        foods: Array.isArray(d.foods) ? d.foods.map(f => ({
+          id: f.id || uid(), name: String(f.name||'未命名'), meal: mealNum(f.meal),
+          p:+f.p||0, c:+f.c||0, f:+f.f||0, kcal:+f.kcal||0, ts:+f.ts||Date.now()
+        })) : []
+      };
+    }
+  }
+  return out;
+}
+function loadState(){
+  try{ const raw = localStorage.getItem(KEY); if(raw) return normalize(JSON.parse(raw)); }
+  catch(e){ console.warn('读取本地数据失败', e); }
+  return normalize(null);
+}
+let state = loadState();
+function save(){
+  try{ localStorage.setItem(KEY, JSON.stringify(state)); }
+  catch(e){ toast('保存失败：浏览器存储不可用'); }
+}
+function getDay(ds, create){
+  if (create && !state.days[ds]) state.days[ds] = {foods:[], water:0, waterLog:[], weight:null, mealCount:0};
+  return state.days[ds] || {foods:[], water:0, waterLog:[], weight:null, mealCount:0};
+}
+function pushWaterLog(day, ml){
+  day.waterLog = day.waterLog || [];
+  day.waterLog.push(ml);
+  if (day.waterLog.length > 20) day.waterLog.shift();
+}
+function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+function sumMacros(day){
+  const s = {p:0,c:0,f:0,kcal:0};
+  (day && day.foods || []).forEach(f => { s.p+=f.p; s.c+=f.c; s.f+=f.f; s.kcal+=f.kcal; });
+  return {p:r1(s.p), c:r1(s.c), f:r1(s.f), kcal:Math.round(s.kcal)};
+}
+const calcKcal = (p,c,f) => Math.round((+p||0)*4 + (+c||0)*4 + (+f||0)*9);
+const maxMealOf = day => (day.foods || []).reduce((m,f) => Math.max(m, f.meal), 0);
+
+/* ================= 视图状态 ================= */
+let cur = todayStr();       // 记录页当前日期
+let editingId = null;       // 弹窗正在编辑的食物 id
+let modalMeal = 1;          // 弹窗对应的餐次（新增时固定）
+let statsRange = { mode:'preset', days:7, start:addDays(todayStr(),-6), end:todayStr() };
+
+function switchTab(name){
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  $('#view-'+name).classList.add('active');
+  document.querySelectorAll('#tabbar button').forEach(b =>
+    b.classList.toggle('on', b.dataset.tab === name));
+  if (name==='today') renderToday();
+  if (name==='stats') renderStats();
+  if (name==='settings') renderSettings();
+  window.scrollTo(0,0);
+}
+
+/* ================= 通用组件 ================= */
+function ringSVG(pct, color, size=112, stroke=9){
+  const r = (size-stroke)/2, cx = size/2, cy = size/2, C = 2*Math.PI*r;
+  const dash = Math.max(0, Math.min(pct,1))*C;
+  return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
+    <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="#eef1f5" stroke-width="${stroke}"/>
+    <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${color}" stroke-width="${stroke}"
+      stroke-linecap="round" stroke-dasharray="${dash} ${C}" transform="rotate(-90 ${cx} ${cy})"/>
+  </svg>`;
+}
+
+/* ---- 日历弹窗 ---- */
+let calView = null, calSelected = null, calOnPick = null;
+function openCalendar({selected, onPick}){
+  const base = selected ? new Date(selected+'T00:00:00') : new Date();
+  calView = {y: base.getFullYear(), m: base.getMonth()};
+  calSelected = selected || null;
+  calOnPick = onPick;
+  renderCalModal();
+  $('#backdrop').hidden = false;
+}
+function renderCalModal(){
+  const {y, m} = calView;
+  const firstDow = new Date(y, m, 1).getDay();
+  const daysInMonth = new Date(y, m+1, 0).getDate();
+  const t = todayStr();
+  const atCurrentMonth = y === new Date().getFullYear() && m === new Date().getMonth();
+  let cells = '';
+  for (let i=0; i<firstDow; i++) cells += '<span></span>';
+  for (let d=1; d<=daysInMonth; d++){
+    const ds = `${y}-${pad(m+1)}-${pad(d)}`;
+    const future = ds > t;
+    const cls = 'cal-day' + (ds===t?' today':'') + (ds===calSelected?' sel':'');
+    cells += `<button class="${cls}" data-action="cal-pick" data-date="${ds}" ${future?'disabled':''}>${d}</button>`;
+  }
+  $('#modal').innerHTML = `
+    <div class="cal-head">
+      <button class="iconbtn" data-action="cal-prev" title="上个月">${icon('i-chev-l')}</button>
+      <div class="cal-title">${y}年${m+1}月</div>
+      <button class="iconbtn" data-action="cal-next" title="下个月" ${atCurrentMonth?'disabled':''}>${icon('i-chev-r')}</button>
+    </div>
+    <div class="cal-grid">
+      ${['日','一','二','三','四','五','六'].map(w=>`<span class="cal-dow">${w}</span>`).join('')}
+      ${cells}
+    </div>
+    <div class="mactions">
+      <button class="cancel" data-action="modal-cancel">取消</button>
+      <button class="ok" data-action="cal-today">回到今天</button>
+    </div>`;
+}
+function calShift(n){
+  let {y, m} = calView;
+  if (n > 0 && y === new Date().getFullYear() && m === new Date().getMonth()) return;
+  m += n;
+  if (m < 0) { m = 11; y--; }
+  if (m > 11) { m = 0; y++; }
+  calView = {y, m};
+  renderCalModal();
+}
+
+function closeModal(){ $('#backdrop').hidden = true; editingId = null; }
+
+/* ================= 记录页 ================= */
+function renderToday(){
+  const t = state.settings.targets;
+  const day = getDay(cur);
+  const sum = sumMacros(day);
+  const isToday = cur === todayStr();
+  const maxUsed = maxMealOf(day);
+  const calPct = t.cal > 0 ? sum.kcal / t.cal : 0;
+  const remain = t.cal - sum.kcal;
+  const macroDef = [
+    ['蛋白质', sum.p, t.protein, 'var(--blue)', 'g'],
+    ['碳水',   sum.c, t.carbs,   'var(--orange)', 'g'],
+    ['脂肪',   sum.f, t.fat,     'var(--purple)', 'g'],
+  ];
+  const waterPct = t.water > 0 ? day.water / t.water : 0;
+
+  // 餐次分组：至少显示前三餐，随记录和「加餐」自动增长
+  const maxShow = Math.max(3, maxUsed, day.mealCount || 0);
+  const mealsHtml = Array.from({length: maxShow}, (_, i) => i+1).map(m => {
+    const items = day.foods.filter(f => f.meal === m);
+    const rows = items.map(f => `
+      <div class="food">
+        <div class="info">
+          <div class="name">${esc(f.name)}</div>
+          <div class="sub">蛋白 ${f.p}g · 碳水 ${f.c}g · 脂肪 ${f.f}g</div>
+        </div>
+        <div class="kcal">${f.kcal}千卡</div>
+        <div class="ops">
+          <button data-action="edit-food" data-id="${f.id}" title="编辑">${icon('i-pen','ico-s')}</button>
+          <button data-action="del-food" data-id="${f.id}" title="删除">${icon('i-trash','ico-s')}</button>
+        </div>
+      </div>`).join('');
+    return `<div class="meal-wrap" data-meal="${m}" title="按住右滑可删除该餐">
+      <div class="meal-del-bg">删除</div>
+      <div class="meal-title">
+        <span class="t">${mealLabel(m)}${items.length?`（${items.length}）`:''}</span>
+        <button class="meal-add" data-action="add-food-meal" data-meal="${m}" title="在这餐添加食物">${icon('i-plus','ico-s')}</button>
+      </div>
+    </div>
+      ${rows || '<div class="muted" style="font-size:12px;padding:2px 0 4px;">暂无</div>'}`;
+  }).join('');
+
+  const wInfo = weightTrend(cur);
+
+  $('#view-today').innerHTML = `
+  <div class="datebar">
+    <div class="nav">
+      <button class="iconbtn" data-action="prev-day">${icon('i-chev-l')}</button>
+      <button class="datebtn" data-action="open-calendar" title="选择日期">
+        ${icon('i-calendar')}${fmtCN(cur)}<small>${WEEK[new Date(cur+'T00:00:00').getDay()]}</small>
+      </button>
+      <button class="iconbtn" data-action="next-day" ${isToday?'disabled':''}>${icon('i-chev-r')}</button>
+    </div>
+    ${isToday?'':'<button class="pill" data-action="go-today">回到今天</button>'}
+  </div>
+
+  <div class="card">
+    <div class="macro-row">
+      <div class="ring-wrap">
+        ${ringSVG(calPct, calPct>1?'var(--red)':'var(--accent)')}
+        <div class="ring-center">
+          <div class="big">${sum.kcal}</div>
+          <div class="small">/ ${t.cal} 千卡</div>
+        </div>
+      </div>
+      <div class="macros">
+        ${macroDef.map(([name,v,tg,color,u]) => {
+          const pct = tg>0 ? v/tg : 0;
+          return `<div class="macro">
+            <div class="top"><b>${name}</b><span class="${pct>1?'over':''}">${v} / ${tg}${u}</span></div>
+            <div class="bar"><i style="width:${Math.min(pct,1)*100}%;background:${color}"></i></div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>
+    <div class="macro-note">${remain >= 0 ? `还可摄入约 <b>${remain}</b> 千卡` : `已超出目标 <b style="color:var(--red)">${-remain}</b> 千卡`}</div>
+  </div>
+
+  <div class="card">
+    <h2>${icon('i-drop','ico-h')} 饮水<span style="color:var(--water)"></span></h2>
+    <div class="water-line">
+      <div class="ring-wrap" style="width:84px;height:84px;">
+        ${ringSVG(waterPct, 'var(--water)', 84, 8)}
+        <div class="ring-center"><div class="big" style="font-size:15px">${day.water}</div><div class="small">/ ${t.water}ml</div></div>
+      </div>
+      <div class="water-amount">${(day.water/1000).toFixed(2)}<small> 升 · 约 ${Math.round(day.water/250)} 杯</small></div>
+    </div>
+    <div class="chips">
+      <button class="chip minus" data-action="water-undo" ${!(day.waterLog && day.waterLog.length)?'disabled':''} title="撤销上一次添加">撤销</button>
+      <button class="chip" data-action="water" data-ml="100">+100ml</button>
+      <button class="chip" data-action="water" data-ml="250">+250ml</button>
+      <button class="chip" data-action="water" data-ml="500">+500ml</button>
+    </div>
+    <div class="inline-add">
+      <input type="number" id="water-custom" min="0" step="10" placeholder="自定义（毫升）" inputmode="numeric">
+      <button data-action="water-custom">添加</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>${icon('i-scale','ico-h')} 体重</h2>
+    <div class="weight-line">
+      <span class="val">${day.weight != null ? day.weight : '--'}</span><span class="unit">公斤</span>
+      ${wInfo ? `<span class="delta ${wInfo.cls}">${wInfo.text}</span>` : ''}
+    </div>
+    <div class="inline-add">
+      <input type="number" id="weight-input" step="0.1" min="0" placeholder="输入当日体重" inputmode="decimal" value="${day.weight != null ? day.weight : ''}">
+      <button data-action="weight-save">${day.weight != null ? '更新' : '记录'}</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>${icon('i-bowl','ico-h')} 饮食记录<span class="sub">共 ${day.foods.length} 条 · ${sum.kcal} 千卡</span></h2>
+    ${mealsHtml}
+    <button class="addbtn" data-action="add-meal">${icon('i-plus')} 加餐</button>
+  </div>`;
+}
+
+function weightTrend(ds){
+  let prev = null, cnt = 0;
+  let d = addDays(ds, -1);
+  while (cnt < 90) {
+    const dd = state.days[d];
+    if (dd && dd.weight != null) { prev = {date:d, weight:dd.weight}; break; }
+    d = addDays(d, -1); cnt++;
+  }
+  const w = getDay(ds).weight;
+  if (!prev) return null;
+  const diff = r1(w - prev.weight);
+  if (diff === 0) return {text:'与上次持平', cls:'same'};
+  return {text:`较上次 ${diff>0?'↑':'↓'} ${Math.abs(diff)}kg`, cls:diff>0?'up':'down'};
+}
+
+/* ================= 添加/编辑食物弹窗 ================= */
+function openFoodModal(opts = {}){
+  editingId = opts.editId || null;
+  const day = getDay(cur);
+  const maxUsed = maxMealOf(day);
+  const old = editingId ? day.foods.find(f => f.id === editingId) : null;
+  const v = old || {name:'', p:'', c:'', f:'', kcal:''};
+  const defMeal = old ? old.meal : (opts.meal || (maxUsed || 1));
+  modalMeal = defMeal;
+
+  // 餐次由入口决定（新增：点的是哪餐；编辑：食物所在餐），弹窗内固定不可改
+  const mealField = `<div class="field"><label>餐次（固定）</label><div class="meal-tag">${mealLabel(defMeal)}</div></div>`;
+
+  const favChips = state.favorites.length
+    ? `<p class="fav-title">常用食物（点按填入）</p><div class="fav-chips">${
+        state.favorites.map((f,i) => `<span class="chip" data-action="fav-pick" data-i="${i}">${esc(f.name)}<button class="x" data-action="fav-del" data-i="${i}" title="删除常用">${icon('i-close','ico-s')}</button></span>`).join('')
+      }</div>`
+    : '';
+
+  $('#modal').innerHTML = `
+    <h3>${editingId ? '编辑食物' : '添加食物'} <span class="muted" style="font-size:12px;font-weight:400">${fmtCN(cur)}</span></h3>
+    ${favChips}
+    <div class="fgrid">
+      <div class="field span2"><label>名称</label><input id="f-name" type="text" placeholder="例如：鸡胸肉 150g" value="${esc(v.name)}"></div>
+      ${mealField}
+      <div class="field"><label>热量（千卡）</label>
+        <input id="f-kcal" type="number" min="0" step="1" inputmode="numeric" placeholder="留空自动算" value="${v.kcal===''?'':v.kcal}">
+        <button class="calc-link" data-action="calc-kcal" type="button">按三大营养素计算</button>
+      </div>
+      <div class="field"><label>蛋白质（克）</label><input id="f-p" type="number" min="0" step="0.1" inputmode="decimal" value="${v.p===''?'':v.p}"></div>
+      <div class="field"><label>碳水（克）</label><input id="f-c" type="number" min="0" step="0.1" inputmode="decimal" value="${v.c===''?'':v.c}"></div>
+      <div class="field"><label>脂肪（克）</label><input id="f-f" type="number" min="0" step="0.1" inputmode="decimal" value="${v.f===''?'':v.f}"></div>
+      <div class="field"><label></label>
+        <span class="note" style="padding-top:6px">计算公式：热量 ≈ 蛋白×4 + 碳水×4 + 脂肪×9</span>
+      </div>
+    </div>
+    ${editingId ? '' : `<label class="checkline"><input type="checkbox" id="f-save-fav"> 保存为常用食物，下次一键填入</label>`}
+    <div class="mactions">
+      <button class="cancel" data-action="modal-cancel">取消</button>
+      <button class="ok" data-action="modal-save">${editingId ? '保存修改' : '添加'}</button>
+    </div>`;
+  $('#backdrop').hidden = false;
+  setTimeout(()=>$('#f-name').focus(), 50);
+}
+
+function saveFood(){
+  const name = $('#f-name').value.trim();
+  if (!name) { toast('请填写食物名称'); $('#f-name').focus(); return; }
+  const meal = modalMeal;
+  const num = id => { const v = parseFloat($(id).value); return isNaN(v) || v < 0 ? 0 : r1(v); };
+  const p = num('#f-p'), c = num('#f-c'), f = num('#f-f');
+  let kcal = parseFloat($('#f-kcal').value);
+  if (isNaN(kcal) || kcal < 0) kcal = calcKcal(p,c,f);
+  kcal = Math.round(kcal);
+  const day = getDay(cur, true);
+
+  if (editingId) {
+    const it = day.foods.find(x => x.id === editingId);
+    if (it) Object.assign(it, {name, meal, p, c, f, kcal});
+    toast('已保存修改');
+  } else {
+    day.foods.push({id: uid(), name, meal, p, c, f, kcal, ts: Date.now()});
+    if ($('#f-save-fav').checked) {
+      state.favorites.unshift({id: uid(), name, meal, p, c, f, kcal});
+      if (state.favorites.length > 24) state.favorites.length = 24;
+    }
+    toast(`已添加 ${name}`);
+  }
+  save(); closeModal(); renderToday();
+}
+
+/* ================= 统计页 ================= */
+function niceMax(v){
+  if (v <= 0) return 1;
+  const pow = Math.pow(10, Math.floor(Math.log10(v)));
+  for (const m of [1,1.5,2,2.5,3,4,5,6,8,10]) if (m*pow >= v) return m*pow;
+  return 10*pow;
+}
+function barChartSVG(data, target, color, unit){
+  const W=720, H=250, L=52, R=10, T=22, B=30;
+  const pw = W-L-R, ph = H-T-B;
+  const maxV = niceMax(Math.max(target||0, ...data.map(d=>d.value)) * 1.12);
+  const y = v => T + ph - (v/maxV)*ph;
+  let grid = '';
+  for (let i=0; i<=3; i++){
+    const v = maxV*i/3, yy = y(v);
+    grid += `<line x1="${L}" y1="${yy}" x2="${W-R}" y2="${yy}" stroke="#eef1f5" stroke-width="1"/>
+      <text x="${L-8}" y="${yy+4}" text-anchor="end" font-size="11" fill="#8a94a6">${Math.round(v)}</text>`;
+  }
+  const n = data.length, step = pw/n, bw = Math.max(2, Math.min(step*0.6, 34));
+  const skip = n > 180 ? 30 : n > 60 ? 10 : n > 28 ? 7 : n > 14 ? 3 : 1;
+  let bars = '';
+  data.forEach((d,i) => {
+    const x = L + step*i + (step-bw)/2;
+    const yy = y(d.value);
+    const h = d.value>0 ? Math.max(T+ph-yy, 2) : 0;
+    bars += `<rect x="${x}" y="${yy}" width="${bw}" height="${h}" rx="${Math.min(4,bw/2)}" fill="${d.value>0?color:'#dde3ea'}"><title>${d.label}：${d.value}${unit}</title></rect>`;
+    if (n<=10 && d.value>0)
+      bars += `<text x="${x+bw/2}" y="${yy-6}" text-anchor="middle" font-size="11" fill="#5a6474">${d.value}</text>`;
+    if (i % skip === 0 || i === n-1)
+      bars += `<text x="${L+step*i+step/2}" y="${H-8}" text-anchor="middle" font-size="11" fill="#8a94a6">${d.label}</text>`;
+  });
+  const targetLine = target>0 && target<=maxV
+    ? `<line x1="${L}" y1="${y(target)}" x2="${W-R}" y2="${y(target)}" stroke="#e5484d" stroke-width="1.5" stroke-dasharray="6 5"/>
+       <text x="${W-R}" y="${y(target)-6}" text-anchor="end" font-size="11" fill="#e5484d">目标 ${target}</text>` : '';
+  return `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">${grid}${bars}${targetLine}</svg>`;
+}
+function lineChartSVG(points, color, unit){
+  if (!points.length) return `<div class="chart-empty">暂无数据</div>`;
+  if (points.length === 1)
+    return `<div class="chart-empty">当前数据：${points[0].label} ${points[0].value}${unit}<br><span style="font-size:12px">记录两天以上即可看到趋势</span></div>`;
+  const W=720, H=250, L=52, R=14, T=22, B=30;
+  const pw = W-L-R, ph = H-T-B;
+  let min = Math.min(...points.map(p=>p.value)), max = Math.max(...points.map(p=>p.value));
+  if (min === max) { min -= 1; max += 1; }
+  const padV = (max-min)*0.15; min -= padV; max += padV;
+  const x = i => L + (pw * i/(points.length-1));
+  const y = v => T + ph - (v-min)/(max-min)*ph;
+  const skip = points.length > 180 ? 30 : points.length > 60 ? 10 : points.length > 28 ? 7 : points.length > 14 ? 3 : 1;
+  let dots='', labels='';
+  points.forEach((p,i) => {
+    dots += `<circle cx="${x(i)}" cy="${y(p.value)}" r="4" fill="#fff" stroke="${color}" stroke-width="2.5"><title>${p.label}：${p.value}${unit}</title></circle>`;
+    if (i % skip === 0 || i === points.length-1)
+      labels += `<text x="${x(i)}" y="${H-8}" text-anchor="middle" font-size="11" fill="#8a94a6">${p.label}</text>`;
+  });
+  let grid='';
+  for (let i=0;i<=3;i++){
+    const v = min + (max-min)*i/3, yy = y(v);
+    grid += `<line x1="${L}" y1="${yy}" x2="${W-R}" y2="${yy}" stroke="#eef1f5"/>
+      <text x="${L-8}" y="${yy+4}" text-anchor="end" font-size="11" fill="#8a94a6">${r1(v)}</text>`;
+  }
+  const path = points.map((p,i) => `${i?'L':'M'}${r1(x(i))} ${r1(y(p.value))}`).join(' ');
+  const last = points[points.length-1];
+  return `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">${grid}
+    <path d="${path}" fill="none" stroke="${color}" stroke-width="2.5" stroke-linejoin="round"/>
+    ${dots}${labels}
+    <text x="${x(points.length-1)}" y="${y(last.value)-10}" text-anchor="middle" font-size="12" font-weight="600" fill="${color}">${last.value}${unit}</text>
+  </svg>`;
+}
+
+function renderStats(){
+  const t = state.settings.targets;
+  const {start, end} = statsRange;
+  const dates = [];
+  for (let d = start; d <= end; d = addDays(d, 1)) { dates.push(d); if (dates.length >= 400) break; }
+  const days = dates.map(d => ({date:d, day: state.days[d]}));
+  const sums = days.map(({day}) => sumMacros(day));
+  const recorded = days.filter(({day}) => day && (day.foods.length || day.water>0 || day.weight != null));
+  const avg = arr => arr.length ? r1(arr.reduce((a,b)=>a+b,0)/arr.length) : 0;
+  const withFood = sums.filter((s,i) => days[i].day && days[i].day.foods.length);
+  const avgKcal = avg(withFood.map(s=>s.kcal));
+  const avgP = avg(withFood.map(s=>s.p));
+  const avgC = avg(withFood.map(s=>s.c));
+  const avgF = avg(withFood.map(s=>s.f));
+  const avgW = avg(days.filter(({day}) => day && day.water>0).map(({day})=>day.water));
+  const wpts = days.filter(({day}) => day && day.weight != null)
+    .map(({date, day}) => ({label: date.slice(5).replace('-','/'), value: day.weight}));
+  const wDelta = wpts.length >= 2 ? r1(wpts[wpts.length-1].value - wpts[0].value) : null;
+
+  const macroPct = (() => {
+    const p = avgP*4, c = avgC*4, f = avgF*9;
+    const tot = p+c+f;
+    return tot>0 ? {p:Math.round(p/tot*100), c:Math.round(c/tot*100), f:Math.round(f/tot*100)} : null;
+  })();
+
+  const rangeLabel = statsRange.mode === 'preset' ? `近${statsRange.days}天` : '自定义范围';
+
+  $('#view-stats').innerHTML = `
+  <div class="card" style="padding:16px 16px 14px;">
+    <div class="seg">
+      ${[7,14,30].map(n=>`<button data-action="range" data-n="${n}" class="${statsRange.mode==='preset'&&statsRange.days===n?'on':''}">近${n}天</button>`).join('')}
+    </div>
+    <div class="rangerow">
+      <button class="rangebtn" data-action="pick-start">${icon('i-calendar')}${fmtCN(statsRange.start)}</button>
+      <span class="muted" style="font-size:12px">至</span>
+      <button class="rangebtn" data-action="pick-end">${icon('i-calendar')}${fmtCN(statsRange.end)}</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>${icon('i-chart','ico-h')} 概览<span class="sub">${rangeLabel} · 共${dates.length}天 · ${recorded.length}天有记录</span></h2>
+    <div class="stat-grid">
+      <div class="stat"><div class="k">平均热量</div><div class="v">${avgKcal||'--'}<small> 千卡</small></div></div>
+      <div class="stat"><div class="k">平均饮水</div><div class="v">${avgW||'--'}<small> 毫升</small></div></div>
+      <div class="stat"><div class="k">平均蛋白质</div><div class="v" style="color:var(--blue)">${avgP||'--'}<small> 克</small></div></div>
+      <div class="stat"><div class="k">平均碳水</div><div class="v" style="color:var(--orange)">${avgC||'--'}<small> 克</small></div></div>
+      <div class="stat"><div class="k">平均脂肪</div><div class="v" style="color:var(--purple)">${avgF||'--'}<small> 克</small></div></div>
+      <div class="stat"><div class="k">体重变化</div><div class="v">${wDelta==null?'--':(wDelta>0?'+':'')+wDelta}<small> 公斤</small></div></div>
+    </div>
+    ${macroPct ? `<div class="macro-note">供能占比：蛋白质 ${macroPct.p}% · 碳水 ${macroPct.c}% · 脂肪 ${macroPct.f}%（平均值）</div>` : ''}
+  </div>
+
+  <div class="card chart-card"><h2>${icon('i-flame','ico-h')} 每日热量</h2>
+    ${barChartSVG(days.map(({date},i)=>({label:date.slice(5).replace('-','/'), value:sums[i].kcal})), t.cal, 'var(--accent)', '千卡')}
+  </div>
+  <div class="card chart-card"><h2>${icon('i-drop','ico-h')} 每日饮水</h2>
+    ${barChartSVG(days.map(({date,day})=>({label:date.slice(5).replace('-','/'), value:day&&day.water?day.water:0})), t.water, 'var(--water)', '毫升')}
+  </div>
+  <div class="card chart-card"><h2>${icon('i-scale','ico-h')} 体重趋势</h2>
+    ${lineChartSVG(wpts, 'var(--orange)', 'kg')}
+  </div>`;
+}
+
+function clampStatsRange(){
+  // 最长统计 366 天
+  if (addDays(statsRange.start, 365) < statsRange.end)
+    statsRange.start = addDays(statsRange.end, -365);
+}
+
+/* ================= 设置页 ================= */
+function renderSettings(){
+  const t = state.settings.targets;
+  const rows = [
+    ['cal','每日热量目标','千卡'],['protein','蛋白质目标','克'],['carbs','碳水目标','克'],
+    ['fat','脂肪目标','克'],['water','每日饮水目标','毫升'],
+  ];
+  const dayCount = Object.keys(state.days).filter(d => {
+    const dd = state.days[d]; return dd && (dd.foods.length || dd.water>0 || dd.weight != null);
+  }).length;
+  $('#view-settings').innerHTML = `
+  <div class="card">
+    <h2>目标设置</h2>
+    ${rows.map(([k,label,unit]) => `
+      <div class="form-row">
+        <label>${label}<span class="muted" style="font-size:12px">（${unit}）</span></label>
+        <input type="number" min="1" step="1" data-target="${k}" value="${t[k]}" inputmode="numeric">
+      </div>`).join('')}
+    <div style="margin-top:12px"><button class="btn primary" data-action="save-targets">保存目标</button></div>
+  </div>
+  <div class="card">
+    <h2>数据管理<span class="sub">已记录 ${dayCount} 天</span></h2>
+    <button class="btn" data-action="export-json">${icon('i-up')} 导出备份（JSON）</button>
+    <button class="btn" data-action="export-csv">${icon('i-doc')} 导出表格（CSV，可用 Excel 打开）</button>
+    <button class="btn" data-action="import-json">${icon('i-down')} 导入备份（覆盖当前数据）</button>
+    <input type="file" id="import-file" accept=".json,application/json" hidden>
+    <button class="btn danger" data-action="clear-data">${icon('i-trash')} 清空全部数据</button>
+  </div>
+  <div class="card">
+    <h2>说明</h2>
+    <p class="note" style="margin:0">
+      · 点日期可打开日历，选择任意日期补记；统计页支持自定义起止日期（最长一年）。<br>
+      · 餐次按「第一餐、第二餐…」编号：点每餐右侧 ＋ 添加食物到该餐；点底部「加餐」直接新增一餐；右滑餐次标题可删除该餐。数量不限。<br>
+      · 日历最多选到今天，未来日期不可选。<br>
+      · 数据保存在本设备的浏览器中，<b>不会自动上传</b>；清除浏览器数据会丢失记录，请定期导出备份。<br>
+      · 换浏览器 / 换设备时：先在旧设备导出 JSON，再在新设备导入即可迁移。<br>
+      · 添加食物时勾选"保存为常用食物"，下次点一下即可填入；热量留空时自动按公式计算。
+    </p>
+  </div>
+  <p style="text-align:center;color:var(--muted);font-size:12px;">饮食日记 v1.5 · 本地应用，无需联网</p>`;
+}
+
+/* ================= 导入导出 ================= */
+function download(filename, content, type){
+  const blob = new Blob([content], {type});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = filename;
+  document.body.appendChild(a); a.click();
+  setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); }, 300);
+}
+function exportJSON(){
+  const payload = {app:'diet-tracker', version:1, exportedAt:new Date().toISOString(), ...state};
+  download(`饮食记录备份-${todayStr().replace(/-/g,'')}.json`, JSON.stringify(payload, null, 2), 'application/json');
+  toast('已导出备份');
+}
+function exportCSV(){
+  const head = ['日期','餐次','食物','蛋白质g','碳水g','脂肪g','热量kcal','饮水ml','体重kg'];
+  const q = v => { v = String(v ?? ''); return /[",\n]/.test(v) ? '"'+v.replace(/"/g,'""')+'"' : v; };
+  const lines = [head.join(',')];
+  const dates = Object.keys(state.days).sort();
+  for (const ds of dates) {
+    const d = state.days[ds];
+    if (!d.foods.length && d.water===0 && d.weight==null) continue;
+    if (!d.foods.length) {
+      lines.push([ds,'','','','','','', d.water||'', d.weight ?? ''].map(q).join(','));
+      continue;
+    }
+    for (const f of d.foods)
+      lines.push([ds, mealLabel(f.meal), f.name, f.p, f.c, f.f, f.kcal, d.water||'', d.weight ?? ''].map(q).join(','));
+  }
+  download(`饮食记录-${todayStr().replace(/-/g,'')}.csv`, '\ufeff'+lines.join('\n'), 'text/csv;charset=utf-8');
+  toast('已导出 CSV');
+}
+function importJSON(file){
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const data = JSON.parse(reader.result);
+      if (!data || data.app !== 'diet-tracker' || typeof data.days !== 'object') throw new Error('bad');
+      const nDays = Object.keys(data.days).length;
+      if (!confirm(`导入备份将覆盖当前全部数据（${nDays} 天记录），确定继续吗？`)) return;
+      state = normalize(data);
+      save(); renderSettings();
+      toast(`导入成功：${nDays} 天记录`);
+    } catch(e) { toast('导入失败：文件格式不正确'); }
+  };
+  reader.readAsText(file);
+}
+
+/* ================= 事件 ================= */
+document.addEventListener('click', e => {
+  const el = e.target.closest('[data-action]');
+  if (!el) return;
+  const act = el.dataset.action;
+
+  if (act === 'tab') return switchTab(el.dataset.tab);
+  if (act === 'prev-day') { cur = addDays(cur, -1); return renderToday(); }
+  if (act === 'next-day') { if (cur < todayStr()) { cur = addDays(cur, 1); renderToday(); } return; }
+  if (act === 'go-today') { cur = todayStr(); return renderToday(); }
+  if (act === 'open-calendar') {
+    openCalendar({selected: cur, onPick: ds => { cur = ds; renderToday(); }});
+    return;
+  }
+  if (act === 'cal-prev') return calShift(-1);
+  if (act === 'cal-next') return calShift(1);
+  if (act === 'cal-pick') { const ds = el.dataset.date; closeModal(); if (calOnPick) calOnPick(ds); return; }
+  if (act === 'cal-today') { const ds = todayStr(); closeModal(); if (calOnPick) calOnPick(ds); return; }
+
+  if (act === 'add-food') return openFoodModal();
+  if (act === 'add-food-meal') return openFoodModal({meal: +el.dataset.meal});
+  if (act === 'add-meal') {
+    // 直接新增一餐（空餐次），再用该餐右侧 ＋ 添加食物
+    const day = getDay(cur, true);
+    const shown = Math.max(3, maxMealOf(day), day.mealCount || 0);
+    day.mealCount = shown + 1;
+    save(); renderToday();
+    toast(`已新增${mealLabel(shown + 1)}，点其右侧 ＋ 添加食物`);
+    return;
+  }
+  if (act === 'edit-food') {
+    const f = getDay(cur).foods.find(x => x.id === el.dataset.id);
+    if (f) openFoodModal({editId: f.id});
+    return;
+  }
+  if (act === 'del-food') {
+    const day = getDay(cur);
+    const f = day.foods.find(x => x.id === el.dataset.id);
+    if (f && confirm(`删除「${f.name}」？`)) {
+      day.foods = day.foods.filter(x => x.id !== el.dataset.id);
+      save(); renderToday(); toast('已删除');
+    }
+    return;
+  }
+  if (act === 'calc-kcal') {
+    const num = id => parseFloat($(id).value) || 0;
+    $('#f-kcal').value = calcKcal(num('#f-p'), num('#f-c'), num('#f-f'));
+    return;
+  }
+  if (act === 'modal-cancel') return closeModal();
+  if (act === 'modal-save') return saveFood();
+  if (act === 'fav-pick') {
+    const f = state.favorites[+el.dataset.i];
+    if (!f) return;
+    $('#f-name').value = f.name;
+    $('#f-p').value = f.p || ''; $('#f-c').value = f.c || '';
+    $('#f-f').value = f.f || ''; $('#f-kcal').value = f.kcal || '';
+    return;
+  }
+  if (act === 'fav-del') {
+    e.stopPropagation();
+    const f = state.favorites[+el.dataset.i];
+    if (f && confirm(`从常用食物中移除「${f.name}」？`)) {
+      state.favorites.splice(+el.dataset.i, 1);
+      save(); openFoodModal(); toast('已移除');
+    }
+    return;
+  }
+
+  if (act === 'water') {
+    const ml = +el.dataset.ml;
+    const day = getDay(cur, true);
+    day.water = Math.max(0, day.water + ml);
+    if (ml > 0) pushWaterLog(day, ml);
+    save(); renderToday();
+    return;
+  }
+  if (act === 'water-undo') {
+    const day = getDay(cur, true);
+    const log = day.waterLog || [];
+    if (!log.length) { toast('没有可撤销的记录'); return; }
+    const last = log.pop();
+    day.waterLog = log;
+    day.water = Math.max(0, day.water - last);
+    save(); renderToday();
+    toast(`已撤销 ${last}ml`);
+    return;
+  }
+  if (act === 'water-custom') {
+    const inp = $('#water-custom');
+    const ml = Math.round(parseFloat(inp.value));
+    if (!ml || ml <= 0) { toast('请输入饮水量'); return; }
+    const day = getDay(cur, true);
+    const add = Math.min(ml, 5000);
+    day.water += add;
+    pushWaterLog(day, add);
+    save(); renderToday(); toast(`已记录 ${ml}ml`);
+    return;
+  }
+  if (act === 'weight-save') {
+    const inp = $('#weight-input');
+    const v = parseFloat(inp.value);
+    if (isNaN(v) || v <= 0 || v > 500) { toast('请输入有效体重'); inp.focus(); return; }
+    getDay(cur, true).weight = r1(v);
+    save(); renderToday(); toast(`已记录体重 ${r1(v)}kg`);
+    return;
+  }
+
+  if (act === 'range') {
+    const n = +el.dataset.n;
+    statsRange = {mode:'preset', days:n, start:addDays(todayStr(), -(n-1)), end:todayStr()};
+    return renderStats();
+  }
+  if (act === 'pick-start') {
+    openCalendar({selected: statsRange.start, onPick: ds => {
+      statsRange.start = ds;
+      if (ds > statsRange.end) statsRange.end = ds;
+      statsRange.mode = 'custom';
+      clampStatsRange(); renderStats();
+    }});
+    return;
+  }
+  if (act === 'pick-end') {
+    openCalendar({selected: statsRange.end, onPick: ds => {
+      statsRange.end = ds;
+      if (ds < statsRange.start) statsRange.start = ds;
+      statsRange.mode = 'custom';
+      clampStatsRange(); renderStats();
+    }});
+    return;
+  }
+
+  if (act === 'save-targets') {
+    const t = state.settings.targets;
+    let ok = true;
+    document.querySelectorAll('[data-target]').forEach(inp => {
+      const v = parseFloat(inp.value);
+      if (isNaN(v) || v <= 0) { ok = false; inp.style.borderColor = 'var(--red)'; }
+      else { inp.style.borderColor = ''; t[inp.dataset.target] = Math.round(v); }
+    });
+    if (!ok) { toast('目标需为正数'); return; }
+    save(); toast('目标已保存');
+    return;
+  }
+  if (act === 'export-json') return exportJSON();
+  if (act === 'export-csv') return exportCSV();
+  if (act === 'import-json') return $('#import-file').click();
+  if (act === 'clear-data') {
+    if (confirm('确定清空全部数据吗？此操作不可恢复！')) {
+      if (confirm('再次确认：真的要清空吗？建议先导出备份。')) {
+        state = normalize(null); save();
+        renderSettings(); toast('已清空');
+      }
+    }
+    return;
+  }
+});
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter') {
+    if (document.activeElement === $('#weight-input')) { e.preventDefault(); document.querySelector('[data-action="weight-save"]').click(); }
+    else if (document.activeElement === $('#water-custom')) { e.preventDefault(); document.querySelector('[data-action="water-custom"]').click(); }
+    else if (!$('#backdrop').hidden && document.activeElement && $('#modal').contains(document.activeElement) && document.activeElement.tagName === 'INPUT' && document.activeElement.type !== 'number') { e.preventDefault(); saveFood(); }
+  }
+  if (e.key === 'Escape' && !$('#backdrop').hidden) closeModal();
+});
+$('#backdrop').addEventListener('click', e => { if (e.target === $('#backdrop')) closeModal(); });
+$('#view-settings').addEventListener('change', e => {
+  if (e.target.id === 'import-file' && e.target.files[0]) importJSON(e.target.files[0]);
+});
+
+/* ================= 餐次右滑删除 ================= */
+let swipe = null;
+document.addEventListener('pointerdown', e => {
+  const wrap = e.target.closest('.meal-wrap');
+  if (!wrap || e.target.closest('button')) return;
+  swipe = {wrap, title: wrap.querySelector('.meal-title'), bg: wrap.querySelector('.meal-del-bg'),
+    startX: e.clientX, dx: 0, meal: +wrap.dataset.meal, pid: e.pointerId};
+});
+document.addEventListener('pointermove', e => {
+  if (!swipe || e.pointerId !== swipe.pid) return;
+  swipe.dx = Math.max(0, e.clientX - swipe.startX);
+  swipe.title.style.transform = `translateX(${Math.min(swipe.dx, 110)}px)`;
+  swipe.bg.style.opacity = Math.min(1, swipe.dx / 72);
+});
+function endSwipe(e, apply){
+  if (!swipe || e.pointerId !== swipe.pid) return;
+  const {dx, meal, title, bg} = swipe;
+  swipe = null;
+  title.style.transform = ''; bg.style.opacity = '';
+  if (apply && dx >= 72) deleteMeal(meal);
+}
+document.addEventListener('pointerup', e => endSwipe(e, true));
+document.addEventListener('pointercancel', e => endSwipe(e, false));
+
+function deleteMeal(m){
+  const day = getDay(cur, true);
+  const items = day.foods.filter(f => f.meal === m);
+  const maxShown = Math.max(3, maxMealOf(day), day.mealCount || 0);
+  if (!items.length) {
+    // 空餐次：仅当它是末尾多出来的那一餐时才移除槽位
+    if (m === maxShown && m > 3) {
+      day.mealCount = m - 1;
+      save(); renderToday();
+      toast(`已移除${mealLabel(m)}`);
+    } else toast('该餐没有食物');
+    return;
+  }
+  if (!confirm(`删除「${mealLabel(m)}」及其中的 ${items.length} 条食物？`)) return;
+  day.foods = day.foods.filter(f => f.meal !== m);
+  if (m === maxShown && m > 3) day.mealCount = m - 1;
+  save(); renderToday();
+  toast(`已删除${mealLabel(m)}`);
+}
+
+/* ================= 启动 ================= */
+renderToday();
+
+// PWA：仅在 http(s) 环境注册离线缓存；file:// 双击使用时跳过
+if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
+  addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js').catch(() => {});
+  });
+}
+</script>
+</body>
+</html>
