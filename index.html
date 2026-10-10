@@ -251,10 +251,12 @@ input::-webkit-outer-spin-button,input::-webkit-inner-spin-button{-webkit-appear
 .field{display:flex; flex-direction:column; gap:4px;}
 .field.span2{grid-column:1 / -1;}
 .field label{font-size:12px; color:var(--muted);}
-.field input,.field select{
+.field input,.field select,.field textarea{
   border:1px solid var(--line); border-radius:10px; padding:9px 10px;
   font-size:15px; background:#fafbfc; width:100%;
 }
+.field textarea{min-height:62px; resize:vertical; line-height:1.5; font-family:inherit;}
+.food .sub.plan{white-space:normal; margin-top:2px; line-height:1.5;}
 .mactions{display:flex; gap:10px; margin-top:16px;}
 .mactions button{
   flex:1; padding:12px; border-radius:12px; font-size:15px; cursor:pointer; border:none;
@@ -403,9 +405,10 @@ function normalize(s){
     }));
   }
   if (Array.isArray(st.trainFavs)) {
-    out.trainFavs = st.trainFavs.filter(f => f && typeof f.name === 'string').map(f => ({
-      id: f.id || uid(), name: f.name,
-      minutes: Math.max(0, Math.round(+f.minutes||0)), kcal: Math.max(0, Math.round(+f.kcal||0))
+    out.trainFavs = st.trainFavs.filter(f => f && (typeof f.part === 'string' || typeof f.name === 'string')).map(f => ({
+      id: f.id || uid(), part: String(f.part || f.name || ''),
+      minutes: Math.max(0, Math.round(+f.minutes||0)),
+      plan: String(f.plan || '').slice(0, 500), kcal: Math.max(0, Math.round(+f.kcal||0))
     }));
   }
   if (st.days && typeof st.days === 'object') {
@@ -424,9 +427,10 @@ function normalize(s){
           p:+f.p||0, c:+f.c||0, f:+f.f||0, kcal:+f.kcal||0, ts:+f.ts||Date.now()
         })) : [],
         trainings: Array.isArray(d.trainings) ? d.trainings.map(t => ({
-          id: t.id || uid(), name: String(t.name||'训练'),
-          minutes: Math.max(0, Math.round(+t.minutes||0)), kcal: Math.max(0, Math.round(+t.kcal||0)),
-          ts:+t.ts||Date.now()
+          id: t.id || uid(), part: String(t.part || t.name || '训练'),
+          minutes: Math.max(0, Math.round(+t.minutes||0)),
+          plan: String(t.plan || '').slice(0, 500),
+          kcal: Math.max(0, Math.round(+t.kcal||0)), ts:+t.ts||Date.now()
         })) : []
       };
     }
@@ -799,7 +803,9 @@ function saveFood(){
 }
 
 /* ================= 训练页 ================= */
-const TRAIN_MET = {'跑步':9, '快走':4.5, '骑行':7, '游泳':8, '力量训练':5, '跳绳':12, '瑜伽':2.5, '球类运动':6, '爬山':7.5, '拉伸':2.5};
+const TRAIN_PARTS = ['胸','背','肩','手臂','腿','臀','核心','有氧','全身','拉伸'];
+const PART_MET = {'有氧':8, '全身':6, '拉伸':2.5};
+const partMet = p => PART_MET[p] || 5;   // 力量部位默认按 5
 
 function latestWeightBefore(ds){
   let d = ds, cnt = 0;
@@ -819,8 +825,9 @@ function renderTraining(){
   const rows = list.map(t => `
     <div class="food">
       <div class="info">
-        <div class="name">${esc(t.name)}</div>
+        <div class="name">${esc(t.part)}</div>
         <div class="sub">${t.minutes > 0 ? `时长 ${t.minutes} 分钟` : '未填时长'}${t.kcal > 0 ? ` · 消耗 ${t.kcal} 千卡` : ''}</div>
+        ${t.plan ? `<div class="sub plan">${esc(t.plan)}</div>` : ''}
       </div>
       <div class="kcal">${t.kcal > 0 ? t.kcal + '千卡' : '—'}</div>
       <div class="ops">
@@ -843,27 +850,28 @@ function openTrainModal(opts = {}){
   modalKind = 'train';
   const day = getDay(cur);
   const old = trainEditingId ? (day.trainings || []).find(t => t.id === trainEditingId) : null;
-  const v = old || {name:'', minutes:'', kcal:''};
+  const v = old || {part:'', minutes:'', plan:'', kcal:''};
 
   const userFavs = state.trainFavs.map((f,i) =>
-    `<span class="chip" data-action="t-fav-pick" data-i="${i}">${esc(f.name)}<button class="x" data-action="t-fav-del" data-i="${i}" title="删除常用">${icon('i-close','ico-s')}</button></span>`).join('');
-  const presets = Object.keys(TRAIN_MET)
-    .filter(n => !state.trainFavs.some(f => f.name === n))
-    .map(n => `<span class="chip" data-action="t-fav-pick" data-name="${n}">${n}</span>`).join('');
+    `<span class="chip" data-action="t-fav-pick" data-i="${i}">${esc(f.part)}${f.plan ? '：' + esc(f.plan.slice(0,8)) + (f.plan.length > 8 ? '…' : '') : ''}<button class="x" data-action="t-fav-del" data-i="${i}" title="删除常用">${icon('i-close','ico-s')}</button></span>`).join('');
+  const presets = TRAIN_PARTS
+    .filter(p => !state.trainFavs.some(f => f.part === p))
+    .map(p => `<span class="chip" data-action="t-fav-pick" data-part="${p}">${p}</span>`).join('');
 
   $('#modal').innerHTML = `
     <h3>${trainEditingId ? '编辑训练' : '添加训练'} <span class="muted" style="font-size:12px;font-weight:400">${fmtCN(cur)}</span></h3>
-    <p class="fav-title">常用项目（点按填入）</p>
+    <p class="fav-title">常用部位 / 计划（点按填入）</p>
     <div class="fav-chips">${userFavs}${presets}</div>
     <div class="fgrid">
-      <div class="field span2"><label>项目</label><input id="t-name" type="text" placeholder="例如：跑步、力量训练" value="${esc(v.name)}"></div>
-      <div class="field"><label>时长（分钟）</label><input id="t-min" type="number" min="0" step="1" inputmode="numeric" placeholder="如 30" value="${v.minutes === '' ? '' : v.minutes}"></div>
-      <div class="field"><label>消耗（千卡）</label>
+      <div class="field span2"><label>训练部位</label><input id="t-part" type="text" placeholder="例如：胸、腿、有氧" value="${esc(v.part)}"></div>
+      <div class="field"><label>时长（分钟）</label><input id="t-min" type="number" min="0" step="1" inputmode="numeric" placeholder="如 45" value="${v.minutes === '' ? '' : v.minutes}"></div>
+      <div class="field"><label>消耗（千卡，可选）</label>
         <input id="t-kcal" type="number" min="0" step="1" inputmode="numeric" placeholder="可留空" value="${v.kcal === '' ? '' : v.kcal}">
         <button class="calc-link" data-action="calc-kcal-train" type="button">按体重估算消耗</button>
       </div>
+      <div class="field span2"><label>训练计划（可选）</label><textarea id="t-plan" rows="3" placeholder="如：卧推 4×10 · 上斜哑铃卧推 3×12">${esc(v.plan)}</textarea></div>
     </div>
-    ${trainEditingId ? '' : `<label class="checkline"><input type="checkbox" id="t-save-fav"> 保存为常用项目，下次一键填入</label>`}
+    ${trainEditingId ? '' : `<label class="checkline"><input type="checkbox" id="t-save-fav"> 保存为常用，下次一键填入</label>`}
     <div class="mactions">
       <button class="cancel" data-action="modal-cancel">取消</button>
       <button class="ok" data-action="train-save">${trainEditingId ? '保存修改' : '添加'}</button>
@@ -872,24 +880,25 @@ function openTrainModal(opts = {}){
 }
 
 function saveTrain(){
-  const name = $('#t-name').value.trim();
-  if (!name) { toast('请填写训练项目'); return; }
+  const part = $('#t-part').value.trim();
+  if (!part) { toast('请填写训练部位'); return; }
   const minutes = Math.max(0, Math.round(parseFloat($('#t-min').value) || 0));
+  const plan = $('#t-plan').value.trim().slice(0, 500);
   const kcal = Math.max(0, Math.round(parseFloat($('#t-kcal').value) || 0));
   const day = getDay(cur, true);
   if (!Array.isArray(day.trainings)) day.trainings = [];
 
   if (trainEditingId) {
     const it = day.trainings.find(x => x.id === trainEditingId);
-    if (it) Object.assign(it, {name, minutes, kcal});
+    if (it) Object.assign(it, {part, minutes, plan, kcal});
     toast('已保存修改');
   } else {
-    day.trainings.push({id: uid(), name, minutes, kcal, ts: Date.now()});
+    day.trainings.push({id: uid(), part, minutes, plan, kcal, ts: Date.now()});
     if ($('#t-save-fav').checked) {
-      state.trainFavs.unshift({id: uid(), name, minutes, kcal});
+      state.trainFavs.unshift({id: uid(), part, minutes, plan, kcal});
       if (state.trainFavs.length > 24) state.trainFavs.length = 24;
     }
-    toast(`已添加 ${name}`);
+    toast(`已添加 ${part}`);
   }
   save(); closeModal(); renderTraining();
 }
@@ -1089,10 +1098,10 @@ function renderSettings(){
       · 数据保存在本设备的浏览器中，<b>不会自动上传</b>；清除浏览器数据会丢失记录，请定期导出备份。<br>
       · 换浏览器 / 换设备时：先在旧设备导出 JSON，再在新设备导入即可迁移。<br>
       · 添加食物时勾选"保存为常用食物"，下次点一下即可填入；热量留空时自动按公式计算。营养数据按「每份」填写：数量填 N 时自动合计为 N 份总量（数量留空则按所填数值直接记录）。<br>
-      · 训练页：记录每日训练项目、时长与消耗；常用项目一键填入，可「按体重估算消耗」（需该项目在估算表内且已记录体重）。<br>
+      · 训练页：按「训练部位 → 时长 → 训练计划」记录；常用部位/计划可保存后一键填入；消耗可选，支持按体重估算（有氧默认 MET 8，其余默认 5）。<br>
     </p>
   </div>
-  <p style="text-align:center;color:var(--muted);font-size:12px;">饮食日记 v1.7 · 本地应用，无需联网</p>`;
+  <p style="text-align:center;color:var(--muted);font-size:12px;">饮食日记 v1.8 · 本地应用，无需联网</p>`;
 }
 
 /* ================= 导入导出 ================= */
@@ -1109,7 +1118,7 @@ function exportJSON(){
   toast('已导出备份');
 }
 function exportCSV(){
-  const head = ['日期','类型','项目/食物','餐次','数量','总克数g','蛋白质g','碳水g','脂肪g','热量kcal','时长分钟','饮水ml','体重kg'];
+  const head = ['日期','类型','项目/食物','餐次','数量','总克数g','蛋白质g','碳水g','脂肪g','热量kcal','时长分钟','训练计划','饮水ml','体重kg'];
   const q = v => { v = String(v ?? ''); return /[",\n]/.test(v) ? '"'+v.replace(/"/g,'""')+'"' : v; };
   const lines = [head.join(',')];
   const dates = Object.keys(state.days).sort();
@@ -1118,13 +1127,13 @@ function exportCSV(){
     const trains = d.trainings || [];
     if (!d.foods.length && !trains.length && d.water===0 && d.weight==null) continue;
     if (!d.foods.length && !trains.length) {
-      lines.push([ds,'饮食','','','','','','','','','', d.water||'', d.weight ?? ''].map(q).join(','));
+      lines.push([ds,'','','','','','','','','','','', d.water||'', d.weight ?? ''].map(q).join(','));
       continue;
     }
     for (const f of d.foods)
-      lines.push([ds, '饮食', f.name, mealLabel(f.meal), f.qty||'', f.grams||'', f.p, f.c, f.f, f.kcal, '', d.water||'', d.weight ?? ''].map(q).join(','));
+      lines.push([ds, '饮食', f.name, mealLabel(f.meal), f.qty||'', f.grams||'', f.p, f.c, f.f, f.kcal, '', '', d.water||'', d.weight ?? ''].map(q).join(','));
     for (const t of trains)
-      lines.push([ds, '训练', t.name, '', '', '', '', '', '', t.kcal||'', t.minutes||'', d.water||'', d.weight ?? ''].map(q).join(','));
+      lines.push([ds, '训练', t.part, '', '', '', '', '', '', t.kcal||'', t.minutes||'', t.plan||'', d.water||'', d.weight ?? ''].map(q).join(','));
   }
   download(`饮食记录-${todayStr().replace(/-/g,'')}.csv`, '\ufeff'+lines.join('\n'), 'text/csv;charset=utf-8');
   toast('已导出 CSV');
@@ -1204,7 +1213,7 @@ document.addEventListener('click', e => {
   if (act === 'del-train') {
     const day = getDay(cur);
     const t = (day.trainings || []).find(x => x.id === el.dataset.id);
-    if (t && confirm(`删除训练「${t.name}」？`)) {
+    if (t && confirm(`删除训练「${t.part}」？`)) {
       day.trainings = day.trainings.filter(x => x.id !== el.dataset.id);
       save(); renderTraining(); toast('已删除');
     }
@@ -1212,31 +1221,30 @@ document.addEventListener('click', e => {
   }
   if (act === 'train-save') return saveTrain();
   if (act === 'calc-kcal-train') {
-    const name = $('#t-name').value.trim();
+    const part = $('#t-part').value.trim();
     const minutes = parseFloat($('#t-min').value) || 0;
-    const met = TRAIN_MET[name];
-    if (!met) { toast('常用项目才能估算（如：跑步、骑行…），可手动填写'); return; }
     if (minutes <= 0) { toast('请先填写时长'); return; }
     const w = latestWeightBefore(cur);
     if (!w) { toast('还没有体重记录，无法估算'); return; }
-    $('#t-kcal').value = Math.round(met * w * minutes / 60);
-    toast(`按体重 ${w}kg 估算`);
+    $('#t-kcal').value = Math.round(partMet(part) * w * minutes / 60);
+    toast(`按 ${part || '力量训练'}（MET ${partMet(part)}）· 体重 ${w}kg 估算`);
     return;
   }
   if (act === 't-fav-pick') {
-    const f = el.dataset.name
-      ? {name: el.dataset.name, minutes: 0, kcal: 0}
+    const f = el.dataset.part
+      ? {part: el.dataset.part, minutes: 0, plan: '', kcal: 0}
       : state.trainFavs[+el.dataset.i];
     if (!f) return;
-    $('#t-name').value = f.name;
+    $('#t-part').value = f.part;
     if (f.minutes) $('#t-min').value = f.minutes;
+    $('#t-plan').value = f.plan || '';
     if (f.kcal) $('#t-kcal').value = f.kcal;
     return;
   }
   if (act === 't-fav-del') {
     e.stopPropagation();
     const f = state.trainFavs[+el.dataset.i];
-    if (f && confirm(`从常用项目中移除「${f.name}」？`)) {
+    if (f && confirm(`从常用中移除「${f.part}」？`)) {
       state.trainFavs.splice(+el.dataset.i, 1);
       save(); openTrainModal(); toast('已移除');
     }
