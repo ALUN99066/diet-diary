@@ -822,6 +822,16 @@ function renderTraining(){
   const list = day.trainings || [];
   const totalMin = list.reduce((a,t) => a + t.minutes, 0);
   const totalKcal = list.reduce((a,t) => a + t.kcal, 0);
+  const editing = !!trainEditingId && list.some(t => t.id === trainEditingId);
+  const ed = editing ? list.find(t => t.id === trainEditingId) : null;
+  const fv = ed || {part:'', minutes:'', plan:'', kcal:''};
+
+  const userFavs = state.trainFavs.map((f,i) =>
+    `<span class="chip" data-action="t-fav-pick" data-i="${i}">${esc(f.part)}${f.plan ? '：' + esc(f.plan.slice(0,8)) + (f.plan.length > 8 ? '…' : '') : ''}<button class="x" data-action="t-fav-del" data-i="${i}" title="删除常用">${icon('i-close','ico-s')}</button></span>`).join('');
+  const presets = TRAIN_PARTS
+    .filter(p => !state.trainFavs.some(f => f.part === p))
+    .map(p => `<span class="chip" data-action="t-fav-pick" data-part="${p}">${p}</span>`).join('');
+
   const rows = list.map(t => `
     <div class="food">
       <div class="info">
@@ -839,44 +849,28 @@ function renderTraining(){
   $('#view-training').innerHTML = `
   ${dateBarHTML()}
   <div class="card">
-    <h2>${icon('i-dumbbell','ico-h')} 训练记录<span class="sub">共 ${list.length} 项 · ${totalMin} 分钟${totalKcal ? ' · ' + totalKcal + ' 千卡' : ''}</span></h2>
-    ${rows || '<div class="muted" style="font-size:12px;padding:2px 0 4px;">这一天还没有训练记录</div>'}
-    <button class="addbtn" data-action="add-train">${icon('i-plus')} 添加训练</button>
-  </div>`;
-}
-
-function openTrainModal(opts = {}){
-  trainEditingId = opts.editId || null;
-  modalKind = 'train';
-  const day = getDay(cur);
-  const old = trainEditingId ? (day.trainings || []).find(t => t.id === trainEditingId) : null;
-  const v = old || {part:'', minutes:'', plan:'', kcal:''};
-
-  const userFavs = state.trainFavs.map((f,i) =>
-    `<span class="chip" data-action="t-fav-pick" data-i="${i}">${esc(f.part)}${f.plan ? '：' + esc(f.plan.slice(0,8)) + (f.plan.length > 8 ? '…' : '') : ''}<button class="x" data-action="t-fav-del" data-i="${i}" title="删除常用">${icon('i-close','ico-s')}</button></span>`).join('');
-  const presets = TRAIN_PARTS
-    .filter(p => !state.trainFavs.some(f => f.part === p))
-    .map(p => `<span class="chip" data-action="t-fav-pick" data-part="${p}">${p}</span>`).join('');
-
-  $('#modal').innerHTML = `
-    <h3>${trainEditingId ? '编辑训练' : '添加训练'} <span class="muted" style="font-size:12px;font-weight:400">${fmtCN(cur)}</span></h3>
+    <h2>${editing ? icon('i-pen','ico-h') : icon('i-plus','ico-h')} ${editing ? '编辑训练' : '添加训练'}</h2>
     <p class="fav-title">常用部位 / 计划（点按填入）</p>
     <div class="fav-chips">${userFavs}${presets}</div>
     <div class="fgrid">
-      <div class="field span2"><label>训练部位</label><input id="t-part" type="text" placeholder="例如：胸、腿、有氧" value="${esc(v.part)}"></div>
-      <div class="field"><label>时长（分钟）</label><input id="t-min" type="number" min="0" step="1" inputmode="numeric" placeholder="如 45" value="${v.minutes === '' ? '' : v.minutes}"></div>
+      <div class="field span2"><label>训练部位</label><input id="t-part" type="text" placeholder="例如：胸、腿、有氧" value="${esc(fv.part)}"></div>
+      <div class="field"><label>时长（分钟）</label><input id="t-min" type="number" min="0" step="1" inputmode="numeric" placeholder="如 45" value="${fv.minutes === '' ? '' : fv.minutes}"></div>
       <div class="field"><label>消耗（千卡，可选）</label>
-        <input id="t-kcal" type="number" min="0" step="1" inputmode="numeric" placeholder="可留空" value="${v.kcal === '' ? '' : v.kcal}">
+        <input id="t-kcal" type="number" min="0" step="1" inputmode="numeric" placeholder="可留空" value="${fv.kcal === '' ? '' : fv.kcal}">
         <button class="calc-link" data-action="calc-kcal-train" type="button">按体重估算消耗</button>
       </div>
-      <div class="field span2"><label>训练计划（可选）</label><textarea id="t-plan" rows="3" placeholder="如：卧推 4×10 · 上斜哑铃卧推 3×12">${esc(v.plan)}</textarea></div>
+      <div class="field span2"><label>训练计划（可选）</label><textarea id="t-plan" rows="2" placeholder="如：卧推 4×10 · 上斜哑铃卧推 3×12">${esc(fv.plan)}</textarea></div>
     </div>
-    ${trainEditingId ? '' : `<label class="checkline"><input type="checkbox" id="t-save-fav"> 保存为常用，下次一键填入</label>`}
+    ${editing ? '' : `<label class="checkline"><input type="checkbox" id="t-save-fav"> 保存为常用，下次一键填入</label>`}
     <div class="mactions">
-      <button class="cancel" data-action="modal-cancel">取消</button>
-      <button class="ok" data-action="train-save">${trainEditingId ? '保存修改' : '添加'}</button>
-    </div>`;
-  $('#backdrop').hidden = false;
+      ${editing ? `<button class="cancel" data-action="train-cancel-edit">取消</button>` : ''}
+      <button class="ok" data-action="train-save">${editing ? '保存修改' : '添加'}</button>
+    </div>
+  </div>
+  <div class="card">
+    <h2>${icon('i-dumbbell','ico-h')} 训练记录<span class="sub">共 ${list.length} 项 · ${totalMin} 分钟${totalKcal ? ' · ' + totalKcal + ' 千卡' : ''}</span></h2>
+    ${rows || '<div class="muted" style="font-size:12px;padding:2px 0 4px;">这一天还没有训练记录</div>'}
+  </div>`;
 }
 
 function saveTrain(){
@@ -900,7 +894,8 @@ function saveTrain(){
     }
     toast(`已添加 ${part}`);
   }
-  save(); closeModal(); renderTraining();
+  trainEditingId = null;
+  save(); renderTraining();
 }
 
 /* ================= 统计页 ================= */
@@ -1098,10 +1093,10 @@ function renderSettings(){
       · 数据保存在本设备的浏览器中，<b>不会自动上传</b>；清除浏览器数据会丢失记录，请定期导出备份。<br>
       · 换浏览器 / 换设备时：先在旧设备导出 JSON，再在新设备导入即可迁移。<br>
       · 添加食物时勾选"保存为常用食物"，下次点一下即可填入；热量留空时自动按公式计算。营养数据按「每份」填写：数量填 N 时自动合计为 N 份总量（数量留空则按所填数值直接记录）。<br>
-      · 训练页：按「训练部位 → 时长 → 训练计划」记录；常用部位/计划可保存后一键填入；消耗可选，支持按体重估算（有氧默认 MET 8，其余默认 5）。<br>
+      · 训练页：直接在页面上填写「训练部位 → 时长 → 训练计划」后点「添加」；常用部位/计划一键填入；消耗可选，支持按体重估算。<br>
     </p>
   </div>
-  <p style="text-align:center;color:var(--muted);font-size:12px;">饮食日记 v1.8 · 本地应用，无需联网</p>`;
+  <p style="text-align:center;color:var(--muted);font-size:12px;">饮食日记 v1.9 · 本地应用，无需联网</p>`;
 }
 
 /* ================= 导入导出 ================= */
@@ -1204,12 +1199,12 @@ document.addEventListener('click', e => {
     return;
   }
 
-  if (act === 'add-train') return openTrainModal();
   if (act === 'edit-train') {
     const t = (getDay(cur).trainings || []).find(x => x.id === el.dataset.id);
-    if (t) openTrainModal({editId: t.id});
+    if (t) { trainEditingId = t.id; renderTraining(); window.scrollTo(0,0); }
     return;
   }
+  if (act === 'train-cancel-edit') { trainEditingId = null; renderTraining(); return; }
   if (act === 'del-train') {
     const day = getDay(cur);
     const t = (day.trainings || []).find(x => x.id === el.dataset.id);
@@ -1246,7 +1241,7 @@ document.addEventListener('click', e => {
     const f = state.trainFavs[+el.dataset.i];
     if (f && confirm(`从常用中移除「${f.part}」？`)) {
       state.trainFavs.splice(+el.dataset.i, 1);
-      save(); openTrainModal(); toast('已移除');
+      save(); renderTraining(); toast('已移除');
     }
     return;
   }
@@ -1372,7 +1367,6 @@ document.addEventListener('keydown', e => {
     else if (!$('#backdrop').hidden && document.activeElement && $('#modal').contains(document.activeElement) && document.activeElement.tagName === 'INPUT' && document.activeElement.type !== 'number') {
       e.preventDefault();
       if (modalKind === 'food') saveFood();
-      else if (modalKind === 'train') saveTrain();
     }
   }
   if (e.key === 'Escape' && !$('#backdrop').hidden) closeModal();
