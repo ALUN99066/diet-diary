@@ -141,6 +141,11 @@ input::-webkit-outer-spin-button,input::-webkit-inner-spin-button{-webkit-appear
   border:1px solid #cdeee0; background:var(--accent-soft); color:var(--accent);
   border-radius:10px; padding:9px 10px; font-size:15px; font-weight:600; text-align:center;
 }
+.food-preview{
+  background:var(--accent-soft); border-radius:10px; padding:9px 12px;
+  font-size:13px; line-height:1.6; color:var(--text);
+}
+.food-preview b{color:var(--accent);}
 .food{
   display:flex; align-items:center; gap:10px; padding:9px 0;
   border-bottom:1px solid #f0f2f5;
@@ -694,7 +699,16 @@ function openFoodModal(opts = {}){
   const day = getDay(cur);
   const maxUsed = maxMealOf(day);
   const old = editingId ? day.foods.find(f => f.id === editingId) : null;
-  const v = old || {name:'', p:'', c:'', f:'', kcal:''};
+  // 弹窗里按“每份”显示：已存的是总量，编辑时除以数量还原为每份值
+  const v = old ? {
+    name: old.name,
+    qty: old.qty > 0 ? old.qty : '',
+    p: old.qty > 0 ? r1(old.p / old.qty) : (old.p || ''),
+    c: old.qty > 0 ? r1(old.c / old.qty) : (old.c || ''),
+    f: old.qty > 0 ? r1(old.f / old.qty) : (old.f || ''),
+    grams: old.qty > 0 ? Math.round(old.grams / old.qty) : (old.grams || ''),
+    kcal: old.qty > 0 ? r1(old.kcal / old.qty) : (old.kcal || ''),
+  } : {name:'', qty:'', p:'', c:'', f:'', grams:'', kcal:''};
   const defMeal = old ? old.meal : (opts.meal || (maxUsed || 1));
   modalMeal = defMeal;
 
@@ -717,14 +731,17 @@ function openFoodModal(opts = {}){
         <input id="f-kcal" type="number" min="0" step="1" inputmode="numeric" placeholder="留空自动算" value="${v.kcal===''?'':v.kcal}">
         <button class="calc-link" data-action="calc-kcal" type="button">按三大营养素计算</button>
       </div>
-      <div class="field"><label>数量（可选）</label><input id="f-qty" type="number" min="0" step="0.5" inputmode="decimal" placeholder="如 2" value="${v.qty>0?v.qty:''}"></div>
-      <div class="field"><label>总克数（克，可选）</label><input id="f-grams" type="number" min="0" step="1" inputmode="numeric" placeholder="如 300" value="${v.grams>0?v.grams:''}"></div>
+      <div class="field"><label>数量（个/份，可选）</label>
+        <input id="f-qty" type="number" min="0" step="0.5" inputmode="decimal" placeholder="如 2" value="${v.qty===''?'':v.qty}">
+      </div>
+      <div class="field"><label>总克数（克，可选）</label><input id="f-grams" type="number" min="0" step="1" inputmode="numeric" placeholder="按每份填，如 50" value="${v.grams===''?'':v.grams}"></div>
       <div class="field"><label>蛋白质（克）</label><input id="f-p" type="number" min="0" step="0.1" inputmode="decimal" value="${v.p===''?'':v.p}"></div>
       <div class="field"><label>碳水（克）</label><input id="f-c" type="number" min="0" step="0.1" inputmode="decimal" value="${v.c===''?'':v.c}"></div>
       <div class="field"><label>脂肪（克）</label><input id="f-f" type="number" min="0" step="0.1" inputmode="decimal" value="${v.f===''?'':v.f}"></div>
       <div class="field"><label></label>
         <span class="note" style="padding-top:6px">计算公式：热量 ≈ 蛋白×4 + 碳水×4 + 脂肪×9</span>
       </div>
+      <div class="field span2"><div class="food-preview" id="f-preview"></div></div>
     </div>
     ${editingId ? '' : `<label class="checkline"><input type="checkbox" id="f-save-fav"> 保存为常用食物，下次一键填入</label>`}
     <div class="mactions">
@@ -732,6 +749,23 @@ function openFoodModal(opts = {}){
       <button class="ok" data-action="modal-save">${editingId ? '保存修改' : '添加'}</button>
     </div>`;
   $('#backdrop').hidden = false;
+  updateFoodPreview();
+}
+
+/* 实时折算：下列数值按“每份”填，数量 N 自动合计为 N 份总量 */
+function updateFoodPreview(){
+  const el = $('#f-preview');
+  if (!el) return;
+  const q = parseFloat($('#f-qty').value);
+  const qty = (!isNaN(q) && q > 0) ? q : 1;
+  const p = parseFloat($('#f-p').value) || 0;
+  const c = parseFloat($('#f-c').value) || 0;
+  const f = parseFloat($('#f-f').value) || 0;
+  const g = parseFloat($('#f-grams').value) || 0;
+  const tp = r1(p*qty), tc = r1(c*qty), tf = r1(f*qty), tg = Math.round(g*qty);
+  const kcalRaw = parseFloat($('#f-kcal').value);
+  const tk = (!isNaN(kcalRaw) && kcalRaw >= 0) ? Math.round(kcalRaw*qty) : calcKcal(tp, tc, tf);
+  el.innerHTML = `总计（×${r1(qty)}）：${tg>0?`<b>${tg}</b>g · `:''}蛋白 <b>${tp}</b>g · 碳水 <b>${tc}</b>g · 脂肪 <b>${tf}</b>g · <b>${tk}</b>千卡`;
 }
 
 function saveFood(){
@@ -739,11 +773,14 @@ function saveFood(){
   if (!name) { toast('请填写食物名称'); $('#f-name').focus(); return; }
   const meal = modalMeal;
   const num = id => { const v = parseFloat($(id).value); return isNaN(v) || v < 0 ? 0 : r1(v); };
-  const p = num('#f-p'), c = num('#f-c'), f = num('#f-f');
-  const qty = num('#f-qty'), grams = Math.round(num('#f-grams'));
-  let kcal = parseFloat($('#f-kcal').value);
-  if (isNaN(kcal) || kcal < 0) kcal = calcKcal(p,c,f);
-  kcal = Math.round(kcal);
+  // 弹窗内按“每份”填写，数量 N 自动折算为 N 份总量后存储
+  const qRaw = parseFloat($('#f-qty').value);
+  const qty = (!isNaN(qRaw) && qRaw > 0) ? r1(qRaw) : 0;
+  const mul = qty > 0 ? qty : 1;
+  const p = r1(num('#f-p') * mul), c = r1(num('#f-c') * mul), f = r1(num('#f-f') * mul);
+  const grams = Math.round(num('#f-grams') * mul);
+  const kcalRaw = parseFloat($('#f-kcal').value);
+  const kcal = (!isNaN(kcalRaw) && kcalRaw >= 0) ? Math.round(kcalRaw * mul) : calcKcal(p, c, f);
   const day = getDay(cur, true);
 
   if (editingId) {
@@ -1051,11 +1088,11 @@ function renderSettings(){
       · 日历最多选到今天，未来日期不可选。<br>
       · 数据保存在本设备的浏览器中，<b>不会自动上传</b>；清除浏览器数据会丢失记录，请定期导出备份。<br>
       · 换浏览器 / 换设备时：先在旧设备导出 JSON，再在新设备导入即可迁移。<br>
-      · 添加食物时勾选"保存为常用食物"，下次点一下即可填入；热量留空时自动按公式计算；数量和总克数为可选属性。<br>
+      · 添加食物时勾选"保存为常用食物"，下次点一下即可填入；热量留空时自动按公式计算。营养数据按「每份」填写：数量填 N 时自动合计为 N 份总量（数量留空则按所填数值直接记录）。<br>
       · 训练页：记录每日训练项目、时长与消耗；常用项目一键填入，可「按体重估算消耗」（需该项目在估算表内且已记录体重）。<br>
     </p>
   </div>
-  <p style="text-align:center;color:var(--muted);font-size:12px;">饮食日记 v1.6 · 本地应用，无需联网</p>`;
+  <p style="text-align:center;color:var(--muted);font-size:12px;">饮食日记 v1.7 · 本地应用，无需联网</p>`;
 }
 
 /* ================= 导入导出 ================= */
@@ -1210,11 +1247,15 @@ document.addEventListener('click', e => {
   if (act === 'fav-pick') {
     const f = state.favorites[+el.dataset.i];
     if (!f) return;
+    const div = f.qty > 0 ? f.qty : 1;
     $('#f-name').value = f.name;
     $('#f-qty').value = f.qty > 0 ? f.qty : '';
-    $('#f-grams').value = f.grams > 0 ? f.grams : '';
-    $('#f-p').value = f.p || ''; $('#f-c').value = f.c || '';
-    $('#f-f').value = f.f || ''; $('#f-kcal').value = f.kcal || '';
+    $('#f-grams').value = f.grams > 0 ? Math.round(f.grams / div) : '';
+    $('#f-p').value = f.p > 0 ? r1(f.p / div) : '';
+    $('#f-c').value = f.c > 0 ? r1(f.c / div) : '';
+    $('#f-f').value = f.f > 0 ? r1(f.f / div) : '';
+    $('#f-kcal').value = f.kcal > 0 ? r1(f.kcal / div) : '';
+    updateFoodPreview();
     return;
   }
   if (act === 'fav-del') {
@@ -1331,6 +1372,9 @@ document.addEventListener('keydown', e => {
 $('#backdrop').addEventListener('click', e => { if (e.target === $('#backdrop')) closeModal(); });
 $('#view-settings').addEventListener('change', e => {
   if (e.target.id === 'import-file' && e.target.files[0]) importJSON(e.target.files[0]);
+});
+document.addEventListener('input', e => {
+  if (modalKind === 'food' && ['f-qty','f-p','f-c','f-f','f-kcal','f-grams'].includes(e.target.id)) updateFoodPreview();
 });
 
 /* ================= 餐次右滑删除 ================= */
