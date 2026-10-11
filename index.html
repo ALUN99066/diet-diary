@@ -397,6 +397,10 @@ function normalize(s){
   const st = s && typeof s === 'object' ? s : {};
   const out = {days:{}, favorites:[], trainFavs:[], settings:{targets:{...DEFAULT_TARGETS}}};
   if (st.settings && st.settings.targets) Object.assign(out.settings.targets, st.settings.targets);
+  if (st.settings && st.settings.ui && typeof st.settings.ui === 'object') {
+    const h = Math.min(3000, Math.max(0, Math.round(+st.settings.ui.trainPlanH || 0)));
+    if (h) out.settings.ui = { trainPlanH: h };
+  }
   if (Array.isArray(st.favorites)) {
     out.favorites = st.favorites.filter(f => f && typeof f.name === 'string').map(f => ({
       id: f.id || uid(), name: f.name, meal: mealNum(f.meal),
@@ -488,6 +492,7 @@ let editingId = null;       // 弹窗正在编辑的食物 id
 let modalMeal = 1;          // 弹窗对应的餐次（新增时固定）
 let modalKind = null;       // 'food'，回车保存时区分
 let trainSaveTimer = null;  // 训练记录自动保存防抖
+let planResizeObs = null;   // 训练计划框高度监听
 let statsRange = { mode:'preset', days:7, start:addDays(todayStr(),-6), end:todayStr() };
 
 function switchTab(name){
@@ -833,6 +838,27 @@ function renderTraining(){
     </div>
     <p class="note" style="margin:10px 2px 0;">填写后自动保存</p>
   </div>`;
+
+  // 记住计划框的拖拽高度：切页/刷新后自动恢复，不用重新拉大
+  const planEl = $('#t-plan');
+  if (planEl) {
+    const savedH = state.settings.ui && state.settings.ui.trainPlanH;
+    if (savedH) planEl.style.height = savedH + 'px';
+    if (planResizeObs) planResizeObs.disconnect();
+    let firstFire = true, hTimer = null;
+    planResizeObs = new ResizeObserver(() => {
+      if (firstFire) { firstFire = false; return; }   // 首次回调是当前尺寸，跳过
+      clearTimeout(hTimer);
+      hTimer = setTimeout(() => {
+        const h = Math.round(planEl.getBoundingClientRect().height);
+        if (h < 40) return;
+        state.settings.ui = state.settings.ui || {};
+        state.settings.ui.trainPlanH = h;
+        save();
+      }, 300);
+    });
+    planResizeObs.observe(planEl);
+  }
 }
 function saveTrainingDraft(){
   const day = getDay(cur, true);
@@ -1034,10 +1060,10 @@ function renderSettings(){
       · 数据保存在本设备的浏览器中，<b>不会自动上传</b>；清除浏览器数据会丢失记录，请定期导出备份。<br>
       · 换浏览器 / 换设备时：先在旧设备导出 JSON，再在新设备导入即可迁移。<br>
       · 添加食物时勾选"保存为常用食物"，下次点一下即可填入；热量留空时自动按公式计算。营养数据按「每份」填写：数量填 N 时自动合计为 N 份总量（数量留空则按所填数值直接记录）。<br>
-      · 训练页：直接填写当天的训练部位、时长和训练计划——一页即一天的训练记录，填写后自动保存。<br>
+      · 训练页：直接填写当天的训练部位、时长和训练计划——一页即一天的训练记录，填写后自动保存；计划框可拖拽拉大，高度会被记住。<br>
     </p>
   </div>
-  <p style="text-align:center;color:var(--muted);font-size:12px;">饮食日记 v2.0 · 本地应用，无需联网</p>`;
+  <p style="text-align:center;color:var(--muted);font-size:12px;">饮食日记 v2.1 · 本地应用，无需联网</p>`;
 }
 
 /* ================= 导入导出 ================= */
