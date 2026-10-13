@@ -3,7 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="theme-color" content="#22b07d">
+<meta name="theme-color" content="#f4f6f8" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#121418" media="(prefers-color-scheme: dark)">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" type="image/png" href="icon-192.png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
@@ -14,11 +15,35 @@
 <title>饮食日记 · 每日记录</title>
 <style>
 :root{
+  color-scheme: light;
   --bg:#f4f6f8; --card:#ffffff; --line:#e8ecf1;
   --text:#1c2330; --muted:#8a94a6;
-  --accent:#22b07d; --accent-soft:#e3f6ee;
+  --accent:#22b07d; --accent-soft:#e3f6ee; --accent-line:#cdeee0;
   --red:#e5484d; --blue:#4f8ef7; --orange:#f7a94f; --purple:#9b6ef3; --water:#3aa7f0;
+  --bar-bg:#eef1f5; --chip-bg:#fafbfc; --input-bg:#fafbfc;
+  --hover:#f0f2f5; --press:#e9edf2; --dash:#c9d2dc;
+  --seg-bg:#eef1f5; --seg-on:#ffffff;
+  --danger-bg:#fdf3f3; --danger-line:#f4c7c8;
+  --day-off:#c6cdd6;
+  --chart-grid:#eef1f5; --chart-label:#8a94a6; --chart-empty:#dde3ea; --chart-value:#5a6474; --chart-dot:#ffffff;
+  --shadow:0 1px 3px rgba(20,30,50,.06);
   --radius:16px;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    color-scheme: dark;
+    --bg:#121418; --card:#1c2128; --line:#2c333d;
+    --text:#e8edf2; --muted:#8b97a8;
+    --accent:#3dcb93; --accent-soft:#163528; --accent-line:#2d6a4f;
+    --red:#ff6b6e; --blue:#7eb0ff; --orange:#ffb86b; --purple:#c4a6ff; --water:#6ecbff;
+    --bar-bg:#2a313b; --chip-bg:#232932; --input-bg:#232932;
+    --hover:#2a313b; --press:#343c48; --dash:#3a4450;
+    --seg-bg:#2a313b; --seg-on:#343c48;
+    --danger-bg:#3a2224; --danger-line:#6b3034;
+    --day-off:#4a5564;
+    --chart-grid:#2c333d; --chart-label:#8b97a8; --chart-empty:#3a4450; --chart-value:#c5ced8; --chart-dot:#1c2128;
+    --shadow:0 1px 3px rgba(0,0,0,.4);
+  }
 }
 *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
 html,body{margin:0;padding:0;}
@@ -42,7 +67,7 @@ body{
 .card{
   background:var(--card); border-radius:var(--radius);
   padding:16px; margin-bottom:14px;
-  box-shadow:0 1px 3px rgba(20,30,50,.06);
+  box-shadow:var(--shadow);
 }
 .card h2{font-size:15px; margin:0 0 12px; font-weight:600; display:flex; align-items:center; gap:7px;}
 .card h2 .sub{font-size:12px; color:var(--muted); font-weight:400; margin-left:2px;}
@@ -57,7 +82,7 @@ button{font-family:inherit;}
   font-size:17px; font-weight:700; color:var(--text); padding:5px 8px; margin-left:-8px;
   border-radius:10px; font-family:inherit;
 }
-.datebtn:active{background:#e9edf2;}
+.datebtn:active{background:var(--press);}
 .datebtn .ico{width:17px; height:17px; color:var(--muted);}
 .datebtn small{font-size:12px; color:var(--muted); font-weight:400;}
 .iconbtn{
@@ -83,7 +108,7 @@ button{font-family:inherit;}
 .macro{font-size:12px;}
 .macro .top{display:flex; justify-content:space-between; margin-bottom:4px;}
 .macro .top b{font-weight:600;}
-.macro .bar{height:8px; border-radius:99px; background:#eef1f5; overflow:hidden;}
+.macro .bar{height:8px; border-radius:99px; background:var(--bar-bg); overflow:hidden;}
 .macro .bar i{display:block; height:100%; border-radius:99px; transition:width .3s;}
 .macro .over{color:var(--red);}
 .macro-note{font-size:12px; color:var(--muted); margin-top:10px;}
@@ -94,16 +119,16 @@ button{font-family:inherit;}
 .water-amount small{font-size:13px; color:var(--muted); font-weight:400;}
 .chips{display:flex; flex-wrap:wrap; gap:8px; margin-top:12px;}
 .chip{
-  border:1px solid var(--line); background:#fafbfc; border-radius:999px;
+  border:1px solid var(--line); background:var(--chip-bg); border-radius:999px;
   padding:6px 14px; font-size:13px; cursor:pointer; color:var(--text);
 }
 .chip:active{background:var(--accent-soft);}
-.chip:disabled{opacity:.4; cursor:default; background:#fafbfc;}
+.chip:disabled{opacity:.4; cursor:default; background:var(--chip-bg);}
 .chip.minus{color:var(--muted);}
 .inline-add{display:flex; gap:8px; margin-top:10px;}
 .inline-add input{
   flex:1; min-width:0; border:1px solid var(--line); border-radius:10px;
-  padding:8px 10px; font-size:14px; background:#fafbfc;
+  padding:8px 10px; font-size:14px; background:var(--input-bg); color:var(--text);
 }
 .inline-add button{
   border:none; background:var(--accent); color:#fff; border-radius:10px;
@@ -138,7 +163,7 @@ input::-webkit-outer-spin-button,input::-webkit-inner-spin-button{-webkit-appear
 }
 .meal-add:active{background:var(--accent-soft);}
 .meal-tag{
-  border:1px solid #cdeee0; background:var(--accent-soft); color:var(--accent);
+  border:1px solid var(--accent-line); background:var(--accent-soft); color:var(--accent);
   border-radius:10px; padding:9px 10px; font-size:15px; font-weight:600; text-align:center;
 }
 .food-preview{
@@ -148,7 +173,7 @@ input::-webkit-outer-spin-button,input::-webkit-inner-spin-button{-webkit-appear
 .food-preview b{color:var(--accent);}
 .food{
   display:flex; align-items:center; gap:10px; padding:9px 0;
-  border-bottom:1px solid #f0f2f5;
+  border-bottom:1px solid var(--line);
 }
 .food:last-child{border-bottom:none;}
 .food .info{flex:1; min-width:0;}
@@ -161,31 +186,31 @@ input::-webkit-outer-spin-button,input::-webkit-inner-spin-button{-webkit-appear
   width:28px; height:28px; border-radius:8px;
   display:inline-flex; align-items:center; justify-content:center;
 }
-.food .ops button:hover{background:#f0f2f5; color:var(--text);}
+.food .ops button:hover{background:var(--hover); color:var(--text);}
 .addbtn{
   width:100%; margin-top:12px; padding:12px; border-radius:12px;
-  border:1.5px dashed #c9d2dc; background:#fafbfc; color:var(--accent);
+  border:1.5px dashed var(--dash); background:var(--chip-bg); color:var(--accent);
   font-size:14px; font-weight:600; cursor:pointer;
   display:flex; align-items:center; justify-content:center; gap:6px;
 }
 .addbtn:active{background:var(--accent-soft);}
 
 /* ---------- 统计 ---------- */
-.seg{display:flex; background:#eef1f5; border-radius:12px; padding:3px;}
+.seg{display:flex; background:var(--seg-bg); border-radius:12px; padding:3px;}
 .seg button{
   flex:1; border:none; background:none; padding:7px 0; font-size:13px;
   border-radius:10px; cursor:pointer; color:var(--muted);
 }
-.seg button.on{background:#fff; color:var(--text); font-weight:600; box-shadow:0 1px 3px rgba(0,0,0,.08);}
+.seg button.on{background:var(--seg-on); color:var(--text); font-weight:600; box-shadow:var(--shadow);}
 .rangerow{display:flex; align-items:center; gap:8px; margin-top:10px;}
 .rangebtn{
-  flex:1; border:1px solid var(--line); background:#fafbfc; border-radius:10px;
+  flex:1; border:1px solid var(--line); background:var(--chip-bg); border-radius:10px;
   padding:8px 6px; font-size:13px; cursor:pointer; color:var(--text);
   display:flex; align-items:center; justify-content:center; gap:6px;
 }
 .rangebtn .ico{width:14px; height:14px; color:var(--muted);}
 .stat-grid{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
-.stat{background:#fafbfc; border:1px solid var(--line); border-radius:12px; padding:10px 12px;}
+.stat{background:var(--chip-bg); border:1px solid var(--line); border-radius:12px; padding:10px 12px;}
 .stat .k{font-size:12px; color:var(--muted);}
 .stat .v{font-size:18px; font-weight:700; margin-top:2px;}
 .stat .v small{font-size:12px; font-weight:400; color:var(--muted);}
@@ -193,12 +218,12 @@ input::-webkit-outer-spin-button,input::-webkit-inner-spin-button{-webkit-appear
 .chart-empty{color:var(--muted); font-size:13px; text-align:center; padding:30px 0;}
 
 /* ---------- 设置 ---------- */
-.form-row{display:flex; align-items:center; justify-content:space-between; padding:9px 0; border-bottom:1px solid #f0f2f5;}
+.form-row{display:flex; align-items:center; justify-content:space-between; padding:9px 0; border-bottom:1px solid var(--line);}
 .form-row:last-child{border-bottom:none;}
 .form-row label{font-size:14px;}
 .form-row input{
   width:110px; border:1px solid var(--line); border-radius:10px;
-  padding:8px 10px; font-size:14px; text-align:right; background:#fafbfc;
+  padding:8px 10px; font-size:14px; text-align:right; background:var(--input-bg); color:var(--text);
 }
 .btn{
   display:flex; align-items:center; justify-content:center; gap:8px;
@@ -206,13 +231,13 @@ input::-webkit-outer-spin-button,input::-webkit-inner-spin-button{-webkit-appear
   background:var(--card); font-size:14px; cursor:pointer; margin-bottom:10px; color:var(--text);
 }
 .btn.primary{background:var(--accent); border-color:var(--accent); color:#fff; font-weight:600;}
-.btn.danger{color:var(--red); border-color:#f4c7c8; background:#fdf3f3;}
+.btn.danger{color:var(--red); border-color:var(--danger-line); background:var(--danger-bg);}
 .note{font-size:12px; color:var(--muted); line-height:1.7;}
 
 /* ---------- 底部导航 ---------- */
 #tabbar{
   position:fixed; bottom:0; left:0; right:0; z-index:50;
-  background:rgba(255,255,255,.94); backdrop-filter:blur(10px);
+  background:color-mix(in srgb, var(--card) 94%, transparent); backdrop-filter:blur(10px);
   border-top:1px solid var(--line);
   display:flex; justify-content:center;
   padding-bottom:env(safe-area-inset-bottom);
@@ -253,15 +278,16 @@ input::-webkit-outer-spin-button,input::-webkit-inner-spin-button{-webkit-appear
 .field label{font-size:12px; color:var(--muted);}
 .field input,.field select,.field textarea{
   border:1px solid var(--line); border-radius:10px; padding:9px 10px;
-  font-size:15px; background:#fafbfc; width:100%;
+  font-size:15px; background:var(--input-bg); color:var(--text); width:100%;
 }
 .field textarea{min-height:62px; resize:vertical; line-height:1.5; font-family:inherit;}
+input::placeholder, textarea::placeholder{color:var(--muted); opacity:.7;}
 .food .sub.plan{white-space:normal; margin-top:2px; line-height:1.5;}
 .mactions{display:flex; gap:10px; margin-top:16px;}
 .mactions button{
   flex:1; padding:12px; border-radius:12px; font-size:15px; cursor:pointer; border:none;
 }
-.mactions .cancel{background:#f0f2f5; color:var(--text);}
+.mactions .cancel{background:var(--hover); color:var(--text);}
 .mactions .ok{background:var(--accent); color:#fff; font-weight:600;}
 .checkline{display:flex; align-items:center; gap:8px; margin-top:12px; font-size:13px; color:var(--muted);}
 .calc-link{
@@ -278,10 +304,10 @@ input::-webkit-outer-spin-button,input::-webkit-inner-spin-button{-webkit-appear
   border:none; background:none; padding:10px 0; border-radius:10px;
   font-size:14px; cursor:pointer; color:var(--text); font-family:inherit;
 }
-.cal-day:active{background:#eef1f5;}
+.cal-day:active{background:var(--press);}
 .cal-day.today{color:var(--accent); font-weight:700;}
 .cal-day.sel{background:var(--accent); color:#fff; font-weight:600;}
-.cal-day:disabled{color:#c6cdd6; cursor:default;}
+.cal-day:disabled{color:var(--day-off); cursor:default;}
 .cal-tip{font-size:12px; color:var(--muted); text-align:center; margin-top:10px;}
 
 /* ---------- Toast ---------- */
@@ -512,11 +538,14 @@ function renderActive(){
 }
 
 /* ================= 通用组件 ================= */
+function themeColor(name){
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+}
 function ringSVG(pct, color, size=112, stroke=9){
   const r = (size-stroke)/2, cx = size/2, cy = size/2, C = 2*Math.PI*r;
   const dash = Math.max(0, Math.min(pct,1))*C;
   return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
-    <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="#eef1f5" stroke-width="${stroke}"/>
+    <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${themeColor('--chart-grid')}" stroke-width="${stroke}"/>
     <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${color}" stroke-width="${stroke}"
       stroke-linecap="round" stroke-dasharray="${dash} ${C}" transform="rotate(-90 ${cx} ${cy})"/>
   </svg>`;
@@ -878,6 +907,8 @@ function niceMax(v){
   return 10*pow;
 }
 function barChartSVG(data, target, color, unit){
+  const gridColor = themeColor('--chart-grid'), labelColor = themeColor('--chart-label');
+  const emptyColor = themeColor('--chart-empty'), valueColor = themeColor('--chart-value');
   const W=720, H=250, L=52, R=10, T=22, B=30;
   const pw = W-L-R, ph = H-T-B;
   const maxV = niceMax(Math.max(target||0, ...data.map(d=>d.value)) * 1.12);
@@ -885,8 +916,8 @@ function barChartSVG(data, target, color, unit){
   let grid = '';
   for (let i=0; i<=3; i++){
     const v = maxV*i/3, yy = y(v);
-    grid += `<line x1="${L}" y1="${yy}" x2="${W-R}" y2="${yy}" stroke="#eef1f5" stroke-width="1"/>
-      <text x="${L-8}" y="${yy+4}" text-anchor="end" font-size="11" fill="#8a94a6">${Math.round(v)}</text>`;
+    grid += `<line x1="${L}" y1="${yy}" x2="${W-R}" y2="${yy}" stroke="${gridColor}" stroke-width="1"/>
+      <text x="${L-8}" y="${yy+4}" text-anchor="end" font-size="11" fill="${labelColor}">${Math.round(v)}</text>`;
   }
   const n = data.length, step = pw/n, bw = Math.max(2, Math.min(step*0.6, 34));
   const skip = n > 180 ? 30 : n > 60 ? 10 : n > 28 ? 7 : n > 14 ? 3 : 1;
@@ -895,19 +926,21 @@ function barChartSVG(data, target, color, unit){
     const x = L + step*i + (step-bw)/2;
     const yy = y(d.value);
     const h = d.value>0 ? Math.max(T+ph-yy, 2) : 0;
-    bars += `<rect x="${x}" y="${yy}" width="${bw}" height="${h}" rx="${Math.min(4,bw/2)}" fill="${d.value>0?color:'#dde3ea'}"><title>${d.label}：${d.value}${unit}</title></rect>`;
+    bars += `<rect x="${x}" y="${yy}" width="${bw}" height="${h}" rx="${Math.min(4,bw/2)}" fill="${d.value>0?color:emptyColor}"><title>${d.label}：${d.value}${unit}</title></rect>`;
     if (n<=10 && d.value>0)
-      bars += `<text x="${x+bw/2}" y="${yy-6}" text-anchor="middle" font-size="11" fill="#5a6474">${d.value}</text>`;
+      bars += `<text x="${x+bw/2}" y="${yy-6}" text-anchor="middle" font-size="11" fill="${valueColor}">${d.value}</text>`;
     if (i % skip === 0 || i === n-1)
-      bars += `<text x="${L+step*i+step/2}" y="${H-8}" text-anchor="middle" font-size="11" fill="#8a94a6">${d.label}</text>`;
+      bars += `<text x="${L+step*i+step/2}" y="${H-8}" text-anchor="middle" font-size="11" fill="${labelColor}">${d.label}</text>`;
   });
+  const targetColor = themeColor('--red');
   const targetLine = target>0 && target<=maxV
-    ? `<line x1="${L}" y1="${y(target)}" x2="${W-R}" y2="${y(target)}" stroke="#e5484d" stroke-width="1.5" stroke-dasharray="6 5"/>
-       <text x="${W-R}" y="${y(target)-6}" text-anchor="end" font-size="11" fill="#e5484d">目标 ${target}</text>` : '';
+    ? `<line x1="${L}" y1="${y(target)}" x2="${W-R}" y2="${y(target)}" stroke="${targetColor}" stroke-width="1.5" stroke-dasharray="6 5"/>
+       <text x="${W-R}" y="${y(target)-6}" text-anchor="end" font-size="11" fill="${targetColor}">目标 ${target}</text>` : '';
   return `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">${grid}${bars}${targetLine}</svg>`;
 }
 function lineChartSVG(points, color, unit){
   if (!points.length) return `<div class="chart-empty">暂无数据</div>`;
+  const gridColor = themeColor('--chart-grid'), labelColor = themeColor('--chart-label'), dotColor = themeColor('--chart-dot');
   if (points.length === 1)
     return `<div class="chart-empty">当前数据：${points[0].label} ${points[0].value}${unit}<br><span style="font-size:12px">记录两天以上即可看到趋势</span></div>`;
   const W=720, H=250, L=52, R=14, T=22, B=30;
@@ -920,15 +953,15 @@ function lineChartSVG(points, color, unit){
   const skip = points.length > 180 ? 30 : points.length > 60 ? 10 : points.length > 28 ? 7 : points.length > 14 ? 3 : 1;
   let dots='', labels='';
   points.forEach((p,i) => {
-    dots += `<circle cx="${x(i)}" cy="${y(p.value)}" r="4" fill="#fff" stroke="${color}" stroke-width="2.5"><title>${p.label}：${p.value}${unit}</title></circle>`;
+    dots += `<circle cx="${x(i)}" cy="${y(p.value)}" r="4" fill="${dotColor}" stroke="${color}" stroke-width="2.5"><title>${p.label}：${p.value}${unit}</title></circle>`;
     if (i % skip === 0 || i === points.length-1)
-      labels += `<text x="${x(i)}" y="${H-8}" text-anchor="middle" font-size="11" fill="#8a94a6">${p.label}</text>`;
+      labels += `<text x="${x(i)}" y="${H-8}" text-anchor="middle" font-size="11" fill="${labelColor}">${p.label}</text>`;
   });
   let grid='';
   for (let i=0;i<=3;i++){
     const v = min + (max-min)*i/3, yy = y(v);
-    grid += `<line x1="${L}" y1="${yy}" x2="${W-R}" y2="${yy}" stroke="#eef1f5"/>
-      <text x="${L-8}" y="${yy+4}" text-anchor="end" font-size="11" fill="#8a94a6">${r1(v)}</text>`;
+    grid += `<line x1="${L}" y1="${yy}" x2="${W-R}" y2="${yy}" stroke="${gridColor}"/>
+      <text x="${L-8}" y="${yy+4}" text-anchor="end" font-size="11" fill="${labelColor}">${r1(v)}</text>`;
   }
   const path = points.map((p,i) => `${i?'L':'M'}${r1(x(i))} ${r1(y(p.value))}`).join(' ');
   const last = points[points.length-1];
@@ -1057,13 +1090,14 @@ function renderSettings(){
       · 点日期可打开日历，选择任意日期补记；统计页支持自定义起止日期（最长一年）。<br>
       · 餐次按「第一餐、第二餐…」编号：点每餐右侧 ＋ 添加食物到该餐；点底部「加餐」直接新增一餐；右滑餐次标题可删除该餐。数量不限。<br>
       · 日历最多选到今天，未来日期不可选。<br>
+      · 界面自动跟随系统的日间 / 夜间模式。<br>
       · 数据保存在本设备的浏览器中，<b>不会自动上传</b>；清除浏览器数据会丢失记录，请定期导出备份。<br>
       · 换浏览器 / 换设备时：先在旧设备导出 JSON，再在新设备导入即可迁移。<br>
       · 添加食物时勾选"保存为常用食物"，下次点一下即可填入；热量留空时自动按公式计算。营养数据按「每份」填写：数量填 N 时自动合计为 N 份总量（数量留空则按所填数值直接记录）。<br>
       · 训练页：直接填写当天的训练部位、时长和训练计划——一页即一天的训练记录，填写后自动保存；计划框可拖拽拉大，高度会被记住。<br>
     </p>
   </div>
-  <p style="text-align:center;color:var(--muted);font-size:12px;">饮食日记 v2.1 · 本地应用，无需联网</p>`;
+  <p style="text-align:center;color:var(--muted);font-size:12px;">饮食日记 v2.2 · 本地应用，无需联网</p>`;
 }
 
 /* ================= 导入导出 ================= */
