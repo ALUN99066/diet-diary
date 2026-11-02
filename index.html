@@ -156,6 +156,15 @@ input::-webkit-outer-spin-button,input::-webkit-inner-spin-button{-webkit-appear
   touch-action:pan-y; will-change:transform;
 }
 .meal-title .t{display:flex; align-items:center; gap:6px;}
+.meal-title .meal-tools{display:flex; align-items:center; gap:4px;}
+.meal-time{
+  border:1px solid var(--line); background:var(--chip-bg); color:var(--muted);
+  border-radius:8px; padding:2px 4px; font-size:12px; font-family:inherit;
+  min-width:92px; text-align:center; color-scheme:inherit;
+}
+.meal-time:focus{color:var(--text); border-color:var(--accent); outline:none;}
+.meal-sum{font-size:12px; color:var(--muted); margin:2px 0 4px;}
+.meal-sum b{color:var(--text); font-weight:600;}
 .meal-add{
   border:none; background:none; color:var(--accent); cursor:pointer;
   width:26px; height:26px; border-radius:8px; margin-right:-5px;
@@ -451,6 +460,17 @@ function normalize(s){
           : [],
         weight: (d.weight == null || isNaN(+d.weight)) ? null : +d.weight,
         mealCount: Math.min(99, Math.max(0, Math.floor(+d.mealCount||0))),
+        mealTimes: (() => {
+          const mt = {};
+          if (d.mealTimes && typeof d.mealTimes === 'object') {
+            for (const [k, v] of Object.entries(d.mealTimes)) {
+              const n = parseInt(k, 10);
+              const mm = String(v == null ? '' : v).match(/^(\d{1,2}):(\d{2})$/);
+              if (n >= 1 && n <= 99 && mm) mt[n] = pad(Math.min(23, +mm[1])) + ':' + mm[2];
+            }
+          }
+          return mt;
+        })(),
         foods: Array.isArray(d.foods) ? d.foods.map(f => ({
           id: f.id || uid(), name: String(f.name||'未命名'), meal: mealNum(f.meal),
           qty: Math.max(0, r1(+f.qty||0)), grams: Math.max(0, Math.round(+f.grams||0)),
@@ -495,8 +515,8 @@ function save(){
   catch(e){ toast('保存失败：浏览器存储不可用'); }
 }
 function getDay(ds, create){
-  if (create && !state.days[ds]) state.days[ds] = {foods:[], training:null, water:0, waterLog:[], weight:null, mealCount:0};
-  return state.days[ds] || {foods:[], training:null, water:0, waterLog:[], weight:null, mealCount:0};
+  if (create && !state.days[ds]) state.days[ds] = {foods:[], training:null, water:0, waterLog:[], weight:null, mealCount:0, mealTimes:{}};
+  return state.days[ds] || {foods:[], training:null, water:0, waterLog:[], weight:null, mealCount:0, mealTimes:{}};
 }
 function pushWaterLog(day, ml){
   day.waterLog = day.waterLog || [];
@@ -518,6 +538,7 @@ let editingId = null;       // 弹窗正在编辑的食物 id
 let modalMeal = 1;          // 弹窗对应的餐次（新增时固定）
 let modalKind = null;       // 'food'，回车保存时区分
 let trainSaveTimer = null;  // 训练记录自动保存防抖
+let mealTimeTimer = null;   // 用餐时间自动保存防抖
 let planResizeObs = null;   // 训练计划框高度监听
 let statsRange = { mode:'preset', days:7, start:addDays(todayStr(),-6), end:todayStr() };
 
@@ -655,13 +676,22 @@ function renderToday(){
         </div>
       </div>`;
     }).join('');
+    const mSum = items.reduce((a,f) => ({kcal:a.kcal+f.kcal, p:a.p+f.p, c:a.c+f.c, fa:a.fa+f.f}), {kcal:0, p:0, c:0, fa:0});
+    const timeVal = (day.mealTimes && day.mealTimes[m]) || '';
+    const sumLine = items.length
+      ? `<div class="meal-sum">合计 <b>${Math.round(mSum.kcal)}</b> 千卡 · 蛋白 ${r1(mSum.p)}g · 碳水 ${r1(mSum.c)}g · 脂肪 ${r1(mSum.fa)}g</div>`
+      : '';
     return `<div class="meal-wrap" data-meal="${m}" title="按住右滑可删除该餐">
       <div class="meal-del-bg">删除</div>
       <div class="meal-title">
         <span class="t">${mealLabel(m)}${items.length?`（${items.length}）`:''}</span>
-        <button class="meal-add" data-action="add-food-meal" data-meal="${m}" title="在这餐添加食物">${icon('i-plus','ico-s')}</button>
+        <span class="meal-tools">
+          <input type="time" class="meal-time" data-meal="${m}" value="${timeVal}" title="记录用餐时间">
+          <button class="meal-add" data-action="add-food-meal" data-meal="${m}" title="在这餐添加食物">${icon('i-plus','ico-s')}</button>
+        </span>
       </div>
     </div>
+      ${sumLine}
       ${rows || '<div class="muted" style="font-size:12px;padding:2px 0 4px;">暂无</div>'}`;
   }).join('');
 
@@ -1090,14 +1120,14 @@ function renderSettings(){
       · 点日期可打开日历，选择任意日期补记；统计页支持自定义起止日期（最长一年）。<br>
       · 餐次按「第一餐、第二餐…」编号：点每餐右侧 ＋ 添加食物到该餐；点底部「加餐」直接新增一餐；右滑餐次标题可删除该餐。数量不限。<br>
       · 日历最多选到今天，未来日期不可选。<br>
-      · 界面自动跟随系统的日间 / 夜间模式。<br>
+      · 每餐可填用餐时间（自动保存），并在餐次下显示该餐的摄入合计（热量与三大营养素小计）。<br>
       · 数据保存在本设备的浏览器中，<b>不会自动上传</b>；清除浏览器数据会丢失记录，请定期导出备份。<br>
       · 换浏览器 / 换设备时：先在旧设备导出 JSON，再在新设备导入即可迁移。<br>
       · 添加食物时勾选"保存为常用食物"，下次点一下即可填入；热量留空时自动按公式计算。营养数据按「每份」填写：数量填 N 时自动合计为 N 份总量（数量留空则按所填数值直接记录）。<br>
       · 训练页：直接填写当天的训练部位、时长和训练计划——一页即一天的训练记录，填写后自动保存；计划框可拖拽拉大，高度会被记住。<br>
     </p>
   </div>
-  <p style="text-align:center;color:var(--muted);font-size:12px;">饮食日记 v2.2 · 本地应用，无需联网</p>`;
+  <p style="text-align:center;color:var(--muted);font-size:12px;">饮食日记 v2.3 · 本地应用，无需联网</p>`;
 }
 
 /* ================= 导入导出 ================= */
@@ -1114,7 +1144,7 @@ function exportJSON(){
   toast('已导出备份');
 }
 function exportCSV(){
-  const head = ['日期','类型','项目/食物','餐次','数量','总克数g','蛋白质g','碳水g','脂肪g','热量kcal','时长分钟','训练计划','饮水ml','体重kg'];
+  const head = ['日期','类型','项目/食物','餐次','时间','数量','总克数g','蛋白质g','碳水g','脂肪g','热量kcal','时长分钟','训练计划','饮水ml','体重kg'];
   const q = v => { v = String(v ?? ''); return /[",\n]/.test(v) ? '"'+v.replace(/"/g,'""')+'"' : v; };
   const lines = [head.join(',')];
   const dates = Object.keys(state.days).sort();
@@ -1124,13 +1154,13 @@ function exportCSV(){
     const hasTrain = !!(tr && (tr.part || tr.minutes > 0 || tr.plan));
     if (!d.foods.length && !hasTrain && d.water===0 && d.weight==null) continue;
     if (!d.foods.length && !hasTrain) {
-      lines.push([ds,'','','','','','','','','','','', d.water||'', d.weight ?? ''].map(q).join(','));
+      lines.push([ds,'','','','','','','','','','','','', d.water||'', d.weight ?? ''].map(q).join(','));
       continue;
     }
     for (const f of d.foods)
-      lines.push([ds, '饮食', f.name, mealLabel(f.meal), f.qty||'', f.grams||'', f.p, f.c, f.f, f.kcal, '', '', d.water||'', d.weight ?? ''].map(q).join(','));
+      lines.push([ds, '饮食', f.name, mealLabel(f.meal), (d.mealTimes && d.mealTimes[f.meal]) || '', f.qty||'', f.grams||'', f.p, f.c, f.f, f.kcal, '', '', d.water||'', d.weight ?? ''].map(q).join(','));
     if (hasTrain)
-      lines.push([ds, '训练', tr.part || '', '', '', '', '', '', '', '', tr.minutes||'', tr.plan||'', d.water||'', d.weight ?? ''].map(q).join(','));
+      lines.push([ds, '训练', tr.part || '', '', '', '', '', '', '', '', '', tr.minutes||'', tr.plan||'', d.water||'', d.weight ?? ''].map(q).join(','));
   }
   download(`饮食记录-${todayStr().replace(/-/g,'')}.csv`, '\ufeff'+lines.join('\n'), 'text/csv;charset=utf-8');
   toast('已导出 CSV');
@@ -1338,13 +1368,36 @@ document.addEventListener('input', e => {
     clearTimeout(trainSaveTimer);
     trainSaveTimer = setTimeout(saveTrainingDraft, 400);
   }
+  // 用餐时间：输入即存（防抖）
+  if (e.target.classList && e.target.classList.contains('meal-time')) {
+    clearTimeout(mealTimeTimer);
+    mealTimeTimer = setTimeout(saveMealTimes, 400);
+  }
 });
+document.addEventListener('change', e => {
+  if (e.target.classList && e.target.classList.contains('meal-time')) saveMealTimes();
+});
+function collectMealTimes(){
+  const mt = {};
+  document.querySelectorAll('.meal-time').forEach(inp => {
+    const m = +inp.dataset.meal;
+    if (m && inp.value) mt[m] = inp.value;
+  });
+  return mt;
+}
+function saveMealTimes(){
+  const day = getDay(cur, true);
+  const mt = collectMealTimes();
+  if (Object.keys(mt).length) day.mealTimes = mt;
+  else delete day.mealTimes;
+  save();
+}
 
 /* ================= 餐次右滑删除 ================= */
 let swipe = null;
 document.addEventListener('pointerdown', e => {
   const wrap = e.target.closest('.meal-wrap');
-  if (!wrap || e.target.closest('button')) return;
+  if (!wrap || e.target.closest('button') || e.target.closest('input')) return;
   swipe = {wrap, title: wrap.querySelector('.meal-title'), bg: wrap.querySelector('.meal-del-bg'),
     startX: e.clientX, dx: 0, meal: +wrap.dataset.meal, pid: e.pointerId};
 });
