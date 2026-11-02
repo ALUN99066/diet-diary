@@ -20,7 +20,7 @@
 
 ## 部署到自己的服务器（备用方案）
 
-若要换到自己的服务器：把 `index.html`、`manifest.webmanifest`、`sw.js` 和 4 个图标文件上传到同一目录，**必须 HTTPS**，其余步骤相同（手机浏览器打开 → 添加到主屏幕）。
+若要换到自己的服务器：把 `index.html`、`manifest.webmanifest`、`manifest-dark.webmanifest`、`sw.js` 和 4 个图标文件上传到同一目录，**必须 HTTPS**，其余步骤相同（手机浏览器打开 → 添加到主屏幕）。
 
 ## 功能
 
@@ -53,5 +53,5 @@
 ## 文件
 
 - `index.html` — 应用主体（HTML/CSS/JS 单文件）
-- `manifest.webmanifest` / `sw.js` — PWA 清单与离线缓存（部署到服务器时必须一起上传；本地双击使用时会被自动忽略）
+- `manifest.webmanifest` / `manifest-dark.webmanifest`（夜间版）/ `sw.js` — PWA 清单与离线缓存（部署到服务器时必须一起上传；本地双击使用时会被自动忽略）
 - `icon-*.png` / `apple-touch-icon.png` — 应用图标
